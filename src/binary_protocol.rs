@@ -1,4 +1,5 @@
 use protocol::{Serializer, Deserializer, ThriftSerializer, ThriftField, ThriftMessage, ThriftDeserializer, ThriftMessageType, ThriftType, Error};
+use transport::{VoidTransport, ReadTransport, WriteTransport};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use std::io::{self, Read, Write};
 use std::iter;
@@ -9,19 +10,31 @@ pub const THRIFT_VERSION_1: i32 = 0x80010000;
 pub const THRIFT_VERSION_MASK: i32 = 0xffff0000;
 pub const THRIFT_TYPE_MASK: i32 = 0x000000ff;
 
-pub struct BinarySerializer<'a> {
-    wr: &'a mut Write
+pub struct BinaryProtocol<T>{
+    inner: T
 }
 
-impl<'a> BinarySerializer<'a> {
-    pub fn new(wr: &'a mut Write) -> BinarySerializer<'a> {
-        BinarySerializer {
-            wr: wr
+impl <T>BinaryProtocol<T> {
+    pub fn into_inner(self) -> T {
+        self.inner
+    }
+}
+
+impl <T: VoidTransport>BinaryProtocol<T> {
+    pub fn new(inner: T) -> Self {
+        BinaryProtocol{
+            inner: inner,
         }
     }
 }
 
-impl<'a> Serializer for BinarySerializer<'a> {
+impl <T: VoidTransport>From<T> for BinaryProtocol<T> {
+    fn from(w: T) -> Self {
+        Self::new(w)
+    }
+}
+
+impl <T: WriteTransport> Serializer for BinaryProtocol<T> {
 
     fn serialize_bool(&mut self, val: bool) -> Result<(), Error> {
         if val {
@@ -44,7 +57,7 @@ impl<'a> Serializer for BinarySerializer<'a> {
     }
 
     fn serialize_i64(&mut self, val: i64) -> Result<(), Error> {
-        try!(self.wr.write_i64::<BigEndian>(val));
+        try!(self.inner.write_i64::<BigEndian>(val));
         Ok(())
     }
 
@@ -53,7 +66,7 @@ impl<'a> Serializer for BinarySerializer<'a> {
     }
 
     fn serialize_i32(&mut self, val: i32) -> Result<(), Error> {
-        try!(self.wr.write_i32::<BigEndian>(val));
+        try!(self.inner.write_i32::<BigEndian>(val));
         Ok(())
     }
 
@@ -62,7 +75,7 @@ impl<'a> Serializer for BinarySerializer<'a> {
     }
 
     fn serialize_i16(&mut self, val: i16) -> Result<(), Error> {
-        try!(self.wr.write_i16::<BigEndian>(val));
+        try!(self.inner.write_i16::<BigEndian>(val));
         Ok(())
     }
 
@@ -71,13 +84,13 @@ impl<'a> Serializer for BinarySerializer<'a> {
     }
 
     fn serialize_i8(&mut self, val: i8) -> Result<(), Error> {
-        try!(self.wr.write_i8(val));
+        try!(self.inner.write_i8(val));
         Ok(())
     }
 
     fn serialize_bytes(&mut self, val: &[u8]) -> Result<(), Error> {
         self.serialize_i32(val.len() as i32);
-        try!(self.wr.write(val));
+        try!(self.inner.write(val));
         Ok(())
     }
 
@@ -90,7 +103,7 @@ impl<'a> Serializer for BinarySerializer<'a> {
     }
 }
 
-impl<'a> ThriftSerializer for BinarySerializer<'a> {
+impl <T: WriteTransport>ThriftSerializer for BinaryProtocol<T> {
     fn write_message_begin(&mut self, name: &str, message_type: ThriftMessageType) -> Result<(), Error> {
         let version = THRIFT_VERSION_1 | message_type as i32;
 
@@ -129,21 +142,11 @@ impl<'a> ThriftSerializer for BinarySerializer<'a> {
     }
 }
 
-pub struct BinaryDeserializer<R: Read + ReadBytesExt> {
-    rd: R
-}
 
-impl<R: Read + ReadBytesExt> BinaryDeserializer<R> {
-    pub fn new(rd: R) -> BinaryDeserializer<R> {
-        BinaryDeserializer {
-            rd: rd
-        }
-    }
-}
 
-impl<R: Read + ReadBytesExt> Deserializer for BinaryDeserializer<R> {
+impl<T: ReadTransport> Deserializer for BinaryProtocol<T> {
     fn deserialize_bool(&mut self) -> Result<bool, Error> {
-        Ok(try!(self.rd.read_i8()) != 0)
+        Ok(try!(self.inner.read_i8()) != 0)
     }
 
     fn deserialize_usize(&mut self) -> Result<usize, Error> {
@@ -159,7 +162,7 @@ impl<R: Read + ReadBytesExt> Deserializer for BinaryDeserializer<R> {
     }
 
     fn deserialize_i64(&mut self) -> Result<i64, Error> {
-        Ok(try!(self.rd.read_i64::<BigEndian>()))
+        Ok(try!(self.inner.read_i64::<BigEndian>()))
     }
 
     fn deserialize_u32(&mut self) -> Result<u32, Error> {
@@ -167,7 +170,7 @@ impl<R: Read + ReadBytesExt> Deserializer for BinaryDeserializer<R> {
     }
 
     fn deserialize_i32(&mut self) -> Result<i32, Error> {
-        Ok(try!(self.rd.read_i32::<BigEndian>()))
+        Ok(try!(self.inner.read_i32::<BigEndian>()))
     }
 
     fn deserialize_u16(&mut self) -> Result<u16, Error> {
@@ -175,7 +178,7 @@ impl<R: Read + ReadBytesExt> Deserializer for BinaryDeserializer<R> {
     }
 
     fn deserialize_i16(&mut self) -> Result<i16, Error> {
-        Ok(try!(self.rd.read_i16::<BigEndian>()))
+        Ok(try!(self.inner.read_i16::<BigEndian>()))
     }
 
     fn deserialize_u8(&mut self) -> Result<u8, Error> {
@@ -183,7 +186,7 @@ impl<R: Read + ReadBytesExt> Deserializer for BinaryDeserializer<R> {
     }
 
     fn deserialize_i8(&mut self) -> Result<i8, Error> {
-        Ok(try!(self.rd.read_i8()))
+        Ok(try!(self.inner.read_i8()))
     }
 
     fn deserialize_bytes(&mut self) -> Result<Vec<u8>, Error> {
@@ -191,7 +194,7 @@ impl<R: Read + ReadBytesExt> Deserializer for BinaryDeserializer<R> {
         let mut buf = Vec::with_capacity(len);
 
         buf.extend(iter::repeat(0).take(len));
-        try!(self.rd.read(&mut buf));
+        try!(self.inner.read(&mut buf));
 
         Ok(buf)
     }
@@ -203,7 +206,7 @@ impl<R: Read + ReadBytesExt> Deserializer for BinaryDeserializer<R> {
     }
 }
 
-impl<R: Read + ReadBytesExt> ThriftDeserializer for BinaryDeserializer<R> {
+impl<T: ReadTransport> ThriftDeserializer for BinaryProtocol<T> {
     fn read_message_begin(&mut self) -> Result<ThriftMessage, Error> {
         let size: i32 = try!(self.deserialize_i32());
 
@@ -255,6 +258,7 @@ impl<R: Read + ReadBytesExt> ThriftDeserializer for BinaryDeserializer<R> {
     }
 }
 
+
 #[cfg(test)]
 mod tests {
     use std::io::{Cursor, Read};
@@ -264,9 +268,9 @@ mod tests {
 
     #[test]
     fn serialize_bool_true() {
-        let mut v = Vec::new();
+        let mut v: Vec<u8> = Vec::new();
         {
-            let mut s = BinarySerializer::new(&mut v);
+            let mut s = BinaryProtocol::new(&mut v);
             s.serialize_bool(true);
         }
 
@@ -277,7 +281,7 @@ mod tests {
     fn serialize_bool_false() {
         let mut v = Vec::new();
         {
-            let mut s = BinarySerializer::new(&mut v);
+            let mut s = BinaryProtocol::new(&mut v);
             s.serialize_bool(false);
         }
 
@@ -288,7 +292,7 @@ mod tests {
     fn serialize_i8() {
         let mut v = Vec::new();
         {
-            let mut s = BinarySerializer::new(&mut v);
+            let mut s = BinaryProtocol::new(&mut v);
             s.serialize_i8(5);
         }
 
@@ -299,7 +303,7 @@ mod tests {
     fn serialize_i8_neg() {
         let mut v = Vec::new();
         {
-            let mut s = BinarySerializer::new(&mut v);
+            let mut s = BinaryProtocol::new(&mut v);
             s.serialize_i8(-5);
         }
 
@@ -310,7 +314,7 @@ mod tests {
     fn serialize_i16() {
         let mut v = Vec::new();
         {
-            let mut s = BinarySerializer::new(&mut v);
+            let mut s = BinaryProtocol::new(&mut v);
             s.serialize_i16(900);
         }
 
@@ -322,7 +326,7 @@ mod tests {
     fn serialize_i16_neg() {
         let mut v = Vec::new();
         {
-            let mut s = BinarySerializer::new(&mut v);
+            let mut s = BinaryProtocol::new(&mut v);
             s.serialize_i16(-900);
         }
 
@@ -334,7 +338,7 @@ mod tests {
     fn serialize_i32() {
         let mut v = Vec::new();
         {
-            let mut s = BinarySerializer::new(&mut v);
+            let mut s = BinaryProtocol::new(&mut v);
             s.serialize_i32(3000000);
         }
 
@@ -346,7 +350,7 @@ mod tests {
     fn serialize_i32_neg() {
         let mut v = Vec::new();
         {
-            let mut s = BinarySerializer::new(&mut v);
+            let mut s = BinaryProtocol::new(&mut v);
             s.serialize_i32(-3000000);
         }
 
@@ -358,7 +362,7 @@ mod tests {
     fn serialize_i64() {
         let mut v = Vec::new();
         {
-            let mut s = BinarySerializer::new(&mut v);
+            let mut s = BinaryProtocol::new(&mut v);
             s.serialize_i64(33000000);
         }
 
@@ -370,7 +374,7 @@ mod tests {
     fn serialize_i64_neg() {
         let mut v = Vec::new();
         {
-            let mut s = BinarySerializer::new(&mut v);
+            let mut s = BinaryProtocol::new(&mut v);
             s.serialize_i64(-33000000);
         }
 
@@ -382,7 +386,7 @@ mod tests {
     fn protocol_begin() {
         let mut v = Vec::new();
         {
-            let mut proto = BinarySerializer::new(&mut v);
+            let mut proto = BinaryProtocol::new(&mut v);
             proto.write_message_begin("foobar", ThriftMessageType::Call);
         }
 
@@ -398,11 +402,11 @@ mod tests {
         let mut buf = Vec::new();
 
         {
-            let mut se = BinarySerializer::new(&mut buf);
+            let mut se = BinaryProtocol::new(&mut buf);
             se.write_message_begin("Foobar123", ThriftMessageType::Call);
         }
 
-        let mut de = BinaryDeserializer::new(Cursor::new(buf));
+        let mut de = BinaryProtocol::new(Cursor::new(buf));
         let msg = de.read_message_begin().unwrap();
 
         assert_eq!(msg.name, "Foobar123");

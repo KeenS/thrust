@@ -3,8 +3,8 @@ use std::convert;
 use std::sync::PoisonError;
 use byteorder;
 use std::sync::mpsc::{SendError, RecvError};
-use mio::NotifyError;
-use reactor::Message;
+// use mio::NotifyError;
+// use reactor::Message;
 use protocol;
 
 #[derive(Debug)]
@@ -17,7 +17,7 @@ pub enum ThrustError {
     PoisonError,
     RecvError(RecvError),
     SendError,
-    NotifyError(NotifyError<Message>)
+    // NotifyError(NotifyError<Message>)
 }
 
 pub type ThrustResult<T> = Result<T, ThrustError>;
@@ -34,11 +34,11 @@ impl<T> convert::From<SendError<T>> for ThrustError {
     }
 }
 
-impl convert::From<NotifyError<Message>> for ThrustError {
-    fn from(val: NotifyError<Message>) -> ThrustError {
-        ThrustError::NotifyError(val)
-    }
-}
+// impl convert::From<NotifyError<Message>> for ThrustError {
+//     fn from(val: NotifyError<Message>) -> ThrustError {
+//         ThrustError::NotifyError(val)
+//     }
+// }
 
 impl convert::From<protocol::Error> for ThrustError {
     fn from(val: protocol::Error) -> ThrustError {

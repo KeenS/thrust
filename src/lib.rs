@@ -25,9 +25,9 @@ pub mod binary_protocol;
 mod runner;
 pub mod dispatcher;
 mod result;
-mod transport;
+pub mod transport;
 
-pub use reactor::Reactor;
+//pub use reactor::Reactor;
 pub use runner::Runner;
 pub use result::{ThrustResult, ThrustError};
 pub use protocol::{Serializer, Serialize, Deserialize, ThriftSerializer, ThriftDeserializer};
