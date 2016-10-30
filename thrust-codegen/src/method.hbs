@@ -1,0 +1,1 @@
+fn {{method.ident}}(&mut self{{#each method.args as |arg| ~}} , {{arg.ident}}: {{arg.ty}}{{/each ~}}) -> Future<{{method.ty}}>

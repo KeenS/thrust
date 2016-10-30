@@ -1,7 +1,7 @@
-#![feature(question_mark, quote, rustc_private, associated_type_defaults)]
-
+#![feature(question_mark, quote, associated_type_defaults)]
+extern crate rustc_serialize;
+use rustc_serialize::{Decodable, Encodable, Decoder, Encoder};
 use std::char;
-use std::io::{Read, Write};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Ty {
@@ -36,6 +36,65 @@ impl From<String> for Ty {
             "double" => Ty::Double,
             _ => Ty::Ident(val)
         }
+    }
+}
+
+impl Decodable for Ty {
+    fn decode<D: Decoder>(_d: &mut D) -> Result<Self, D::Error> {
+        unimplemented!()
+    }
+}
+
+impl Encodable for Ty {
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        use Ty::*;
+        s.emit_enum("Ty", |s| {
+            match self {
+                &String => s.emit_enum_variant("string", 0, 0, |_| Ok(())),
+                &Void => s.emit_enum_variant("void", 1, 0, |_| Ok(())),
+                &Byte => s.emit_enum_variant("byte", 2, 0, |_| Ok(())),
+                &Bool => s.emit_enum_variant("bool", 3, 0, |_| Ok(())),
+                &Binary => s.emit_enum_variant("binary", 4, 0, |_| Ok(())),
+                &I16 => s.emit_enum_variant("i16", 5, 0, |_| Ok(())),
+                &I32 => s.emit_enum_variant("i32", 6, 0, |_| Ok(())),
+                &I64 => s.emit_enum_variant("i64", 7, 0, |_| Ok(())),
+                &Double => s.emit_enum_variant("double", 8, 0, |_| Ok(())),
+                &List(ref ty) => s.emit_enum_variant("list", 9, 1, |s| {
+                    try!(s.emit_enum_variant_arg(0, |s| {
+                        ty.encode(s)
+                    }));
+                    Ok(())
+                }),
+                &Set(ref ty) => s.emit_enum_variant("set", 10, 1, |s| {
+                    try!(s.emit_enum_variant_arg(0, |s| {
+                        ty.encode(s)
+                    }));
+                    Ok(())
+                }),
+                &Map(ref kty, ref vty) => s.emit_enum_variant("map", 11, 1, |s| {
+                    try!(s.emit_enum_variant_arg(0, |s| {
+                        kty.encode(s)
+                    }));
+                    try!(s.emit_enum_variant_arg(1, |s| {
+                        vty.encode(s)
+                    }));
+                    Ok(())
+                }),
+                &Option(ref ty) => s.emit_enum_variant("option", 12, 1, |s| {
+                    try!(s.emit_enum_variant_arg(0, |s| {
+                        ty.encode(s)
+                    }));
+                    Ok(())
+                }),
+                // User-defined type.
+                &Ident(ref string) => s.emit_enum_variant("ident", 13, 1, |s| {
+                    try!(s.emit_enum_variant_arg(0, |s| {
+                        s.emit_str(&string)
+                    }));
+                    Ok(())
+                }),
+            }
+        })
     }
 }
 
@@ -93,18 +152,18 @@ impl Ty {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub struct Include {
     pub path: String
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub struct Service {
     pub ident: String,
     pub methods: Vec<ServiceMethod>
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub struct ServiceMethod {
     pub ident: String,
     pub ty: Ty,
@@ -112,26 +171,26 @@ pub struct ServiceMethod {
     pub args: Vec<StructField>
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub struct Enum {
     pub ident: String,
     pub variants: Vec<String>
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub struct Struct {
     pub ident: String,
     pub fields: Vec<StructField>
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum FieldAttribute {
     Optional,
     Required,
     Oneway
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub struct StructField {
     pub seq: i16,
     pub attr: FieldAttribute,
@@ -139,10 +198,10 @@ pub struct StructField {
     pub ident: String
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub struct Typedef(pub Ty, pub String);
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub struct Namespace {
     pub lang: String,
     pub module: String
@@ -203,6 +262,7 @@ pub enum Error {
     NoMoreItems
 }
 
+#[derive(Debug)]
 pub struct Parser<'a> {
     buffer: &'a str,
     pos: usize,
