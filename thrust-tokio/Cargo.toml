@@ -1,0 +1,12 @@
+[package]
+name = "thrust-tokio"
+version = "0.1.0"
+authors = ["Sunrin SHIMURA (keen) <3han5chou7@gmail.com>"]
+
+[dependencies]
+thrust = { path = "../"}
+futures = "0.1.3"
+tokio-core = { path = "../../tokio-core" }
+tokio-proto = { path = "../../tokio-proto" }
+tokio-service = { path = "../../tokio-service" }
+
