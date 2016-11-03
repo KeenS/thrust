@@ -1,0 +1,50 @@
+#[derive(Clone)]
+pub struct {{service.ident}}Server<T>
+{
+    inner: T,
+}
+
+impl <T: {{service.ident}}Service>{{service.ident}}Server<T>
+{
+    pub fn new(inner: T) -> Self
+    {
+        {{service.ident}}Server {
+            inner: inner
+        }
+    }
+
+    pub fn serve(self, handle: &Handle,  addr: SocketAddr)
+                    -> io::Result<server::ServerHandle>
+        where T: {{service.ident}}Service+Clone+'static
+    {
+        server::listen(handle, addr, move |stream| {
+            Ok(pipeline::EasyServer::new(self.clone(),
+                                         new_thrift_server_transport::<_, {{service.ident}}ServiceMethods, {{service.ident}}ServiceMethodReturn>(stream)))
+        })
+    }
+
+}
+
+impl <T>Service for {{service.ident}}Server<T>
+    where T: {{service.ident}}Service
+{
+    type Request = {{service.ident}}ServiceMethodArgs;
+    type Response = {{service.ident}}ServiceMethodReturn;
+    type Error = io::Error;
+    type Future = Box<Future<Item = {{service.ident}}ServiceMethodReturn, Error = io::Error>>;
+
+
+    fn call(&self, req: Self::Request) -> Self::Future {
+        use thrift::{{service.ident}}ServiceMethodArgs::*;
+        use thrift::{{service.ident}}ServiceMethodReturn::*;
+        match req {
+            {{~#each service.methods as |method|}}
+            A{{method.ident}}(args)  => Box::new(self.inner.{{method.ident}}(args.token).map(R{{method.ident}})),
+            {{~/each}}
+        }
+    }
+
+    fn poll_ready(&self) -> Async<()> {
+        Async::Ready(())
+    }
+}
