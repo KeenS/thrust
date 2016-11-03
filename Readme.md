@@ -1,4 +1,4 @@
-A fork project of [thehydroimpulse/thrust: Thrift RPC in Rust (Async I/O) http://thehydroimpulse.github.io/thrust](https://github.com/thehydroimpulse/thrust)  to integrate [tokio-rs/tokio: Asynchronous I/O for Rust](https://github.com/tokio-rs/tokio).
+A fork project of [thehydroimpulse/thrust: Thrift RPC in Rust (Async I/O) http://thehydroimpulse.github.io/thrust](https://github.com/thehydroimpulse/thrust)  to integrate with [tokio-rs/tokio: Asynchronous I/O for Rust](https://github.com/tokio-rs/tokio).
 
 # Status
 UNDER DEVELOPMENT, NOT READY TO USE
