@@ -42,3 +42,5 @@ thrust-tokio = {git = "path/to/thrust/thrust-tokio"}
 
 see [example](example).
 
+# License
+MIT. See [LICENSE](LICENSE).
