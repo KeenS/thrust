@@ -3,8 +3,6 @@ use std::convert;
 use std::sync::PoisonError;
 use byteorder;
 use std::sync::mpsc::{SendError, RecvError};
-// use mio::NotifyError;
-// use reactor::Message;
 use protocol;
 
 #[derive(Debug)]
@@ -17,7 +15,6 @@ pub enum ThrustError {
     PoisonError,
     RecvError(RecvError),
     SendError,
-    // NotifyError(NotifyError<Message>)
 }
 
 pub type ThrustResult<T> = Result<T, ThrustError>;
@@ -29,25 +26,19 @@ impl convert::From<io::Error> for ThrustError {
 }
 
 impl<T> convert::From<SendError<T>> for ThrustError {
-    fn from(val: SendError<T>) -> ThrustError {
+    fn from(_val: SendError<T>) -> ThrustError {
         ThrustError::SendError
     }
 }
 
-// impl convert::From<NotifyError<Message>> for ThrustError {
-//     fn from(val: NotifyError<Message>) -> ThrustError {
-//         ThrustError::NotifyError(val)
-//     }
-// }
-
 impl convert::From<protocol::Error> for ThrustError {
-    fn from(val: protocol::Error) -> ThrustError {
+    fn from(_val: protocol::Error) -> ThrustError {
         ThrustError::Other
     }
 }
 
 impl convert::From<RecvError> for ThrustError {
-    fn from(val: RecvError) -> ThrustError {
+    fn from(_val: RecvError) -> ThrustError {
         ThrustError::RecvError(RecvError)
     }
 }
@@ -59,7 +50,7 @@ impl convert::From<byteorder::Error> for ThrustError {
 }
 
 impl<T> convert::From<PoisonError<T>> for ThrustError {
-    fn from(val: PoisonError<T>) -> ThrustError {
+    fn from(_val: PoisonError<T>) -> ThrustError {
         ThrustError::PoisonError
     }
 }

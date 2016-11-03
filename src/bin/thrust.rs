@@ -5,7 +5,7 @@ extern crate docopt;
 
 use docopt::Docopt;
 
-use std::io::{Write, Read};
+use std::io::Read;
 use std::fs::File;
 use std::path::Path;
 use thrust_parser::Parser;

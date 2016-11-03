@@ -1,6 +1,6 @@
 use std::io::{self, Cursor};
 use tokio_core::io::Io;
-use tokio_core::easy::{Parse, Serialize, EasyBuf, EasyFramed};
+use easy::{Parse, Serialize, EasyBuf, EasyFramed};
 use thrust::protocol::{Deserialize as De, Serialize as Se, Deserializer, ThriftDeserializer, Error};
 use thrust::binary_protocol::BinaryProtocol;
 use futures::{Poll, Async};

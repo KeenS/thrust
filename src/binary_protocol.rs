@@ -1,13 +1,13 @@
 use protocol::{Serializer, Deserializer, ThriftSerializer, ThriftField, ThriftMessage, ThriftDeserializer, ThriftMessageType, ThriftType, Error};
 use transport::{VoidTransport, ReadTransport, WriteTransport};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use std::io::{self, Read, Write};
 use std::iter;
-use byteorder;
-use std::convert;
 
+#[allow(overflowing_literals)]
 pub const THRIFT_VERSION_1: i32 = 0x80010000;
+#[allow(overflowing_literals)]
 pub const THRIFT_VERSION_MASK: i32 = 0xffff0000;
+#[allow(overflowing_literals)]
 pub const THRIFT_TYPE_MASK: i32 = 0x000000ff;
 
 pub struct BinaryProtocol<T>{
@@ -89,7 +89,7 @@ impl <T: WriteTransport> Serializer for BinaryProtocol<T> {
     }
 
     fn serialize_bytes(&mut self, val: &[u8]) -> Result<(), Error> {
-        self.serialize_i32(val.len() as i32);
+        try!(self.serialize_i32(val.len() as i32));
         try!(self.inner.write(val));
         Ok(())
     }
@@ -114,7 +114,7 @@ impl <T: WriteTransport>ThriftSerializer for BinaryProtocol<T> {
         Ok(())
     }
 
-    fn write_struct_begin(&mut self, name: &str) -> Result<(), Error> {
+    fn write_struct_begin(&mut self, _name: &str) -> Result<(), Error> {
         Ok(())
     }
 
@@ -122,7 +122,7 @@ impl <T: WriteTransport>ThriftSerializer for BinaryProtocol<T> {
         Ok(())
     }
 
-    fn write_field_begin(&mut self, name: &str, ty: ThriftType, id: i16) -> Result<(), Error> {
+    fn write_field_begin(&mut self, _name: &str, ty: ThriftType, id: i16) -> Result<(), Error> {
         try!(self.serialize_i8(ty as i8));
         try!(self.serialize_i16(id));
         Ok(())

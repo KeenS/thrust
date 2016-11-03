@@ -3,9 +3,9 @@ pub struct {{service.ident}}Client {
 }
 
 impl {{service.ident}}Client {
-    pub fn new(handle:&Handle, stream: TcpStream) -> Self {
+    pub fn new(handle: &Handle, stream: TcpStream) -> Self {
         let transport = new_thrift_client_transport::<_, {{service.ident}}ServiceMethods, {{service.ident}}ServiceMethodArgs>(stream);
-        let easy_client = easy::pipeline::connect(transport, &handle);
+        let easy_client = easy::pipeline::connect(transport, handle);
 
         {{service.ident}}Client { inner: easy_client }
     }

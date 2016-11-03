@@ -1,28 +1,9 @@
-use result::{ThrustResult};
 use std::io::{self, Write, Read, Cursor};
 
 
 pub trait VoidTransport {
     fn open(&mut self) -> io::Result<()>;
     fn close(&mut self) -> io::Result<()>;
-}
-
-impl  <'a>VoidTransport for &'a mut VoidTransport {
-    fn open(&mut self) -> io::Result<()> {
-        self.open()
-    }
-    fn close(&mut self) -> io::Result<()> {
-        self.close()
-    }
-}
-
-impl  <'a>VoidTransport for &'a VoidTransport {
-    fn open(&mut self) -> io::Result<()> {
-        self.open()
-    }
-    fn close(&mut self) -> io::Result<()> {
-        self.close()
-    }
 }
 
 pub trait ReadTransport: VoidTransport + Read {

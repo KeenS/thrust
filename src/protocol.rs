@@ -1,4 +1,4 @@
-use std::io::{self, Read, Write};
+use std::io;
 use std::convert;
 use byteorder;
 use std::string::FromUtf8Error;
@@ -128,11 +128,11 @@ pub trait Serialize {
 }
 
 pub trait ThriftSerializer {
-    fn write_message_begin(&mut self, name: &str, message_type: ThriftMessageType) -> Result<(), Error> {
+    fn write_message_begin(&mut self, _name: &str, _message_type: ThriftMessageType) -> Result<(), Error> {
         Ok(())
     }
 
-    fn write_struct_begin(&mut self, name: &str) -> Result<(), Error> {
+    fn write_struct_begin(&mut self, _name: &str) -> Result<(), Error> {
         Ok(())
     }
 
@@ -140,7 +140,7 @@ pub trait ThriftSerializer {
         Ok(())
     }
 
-    fn write_field_begin(&mut self, name: &str, ty: ThriftType, id: i16) -> Result<(), Error> {
+    fn write_field_begin(&mut self, _name: &str, _ty: ThriftType, _id: i16) -> Result<(), Error> {
         Ok(())
     }
 
@@ -282,7 +282,7 @@ impl Deserialize for String {
 }
 
 impl Serialize for () {
-    fn serialize<S>(&self, s: &mut S) -> Result<(), Error>
+    fn serialize<S>(&self, _s: &mut S) -> Result<(), Error>
         where S: Serializer + ThriftSerializer
     {
         Ok(())
