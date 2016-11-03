@@ -1,9 +1,8 @@
 use std::io::{self, Cursor};
 use tokio_core::io::Io;
 use tokio_core::easy::{Parse, Serialize, EasyBuf, EasyFramed};
-use thrust::protocol::{Deserialize as De, Serialize as Se, Deserializer, Serializer,ThriftDeserializer, ThriftSerializer, Error, ThriftMessageType};
+use thrust::protocol::{Deserialize as De, Serialize as Se, Deserializer, ThriftDeserializer, Error};
 use thrust::binary_protocol::BinaryProtocol;
-use thrust::transport::*;
 use futures::{Poll, Async};
 use std::marker::PhantomData;
 
@@ -24,8 +23,8 @@ macro_rules! try_async {
         match $t {
             Ok(res) => res,
             Err(Error::Byteorder(_)) => return Ok(Async::NotReady),
-            Err(Error::Io(e)) => {println!("ioerro");return Err(e)},
-            Err(e) => return {println!("othreerro {:?}", e);Err(io::Error::new(io::ErrorKind::InvalidData, "failed to parse thrift data"))},
+            Err(Error::Io(e)) => return Err(e),
+            _ => return Err(io::Error::new(io::ErrorKind::InvalidData, "failed to parse thrift data")),
         }
     )
 }
@@ -101,13 +100,10 @@ macro_rules! gen_parse {
             type Out = T::$out;
 
             fn parse(&mut self, buf: &mut EasyBuf) -> Poll<Self::Out, io::Error> {
-                println!("called");
                 let cur = Cursor::new(buf);
                 let mut protocol = BinaryProtocol::from(cur);
                 let msg = try_async!(protocol.read_message_begin());
-                println!("called2");
                 //assert!(msg.type) == $msg_type
-                println!("got {}", msg.name);
                 let ret = match T::from_str(&msg.name) {
                     Ok(method) => try_async!(method.$parser(&mut protocol)),
                     Err(_) => return Err(io::Error::new(io::ErrorKind::InvalidData, "failed to parse thrift data")),
