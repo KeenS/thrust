@@ -554,6 +554,9 @@ impl<'a> Parser<'a> {
     }
 
     pub fn lookahead_keyword(&mut self, keyword: Keyword) -> bool {
+        while vec![Token::Comma, Token::Semi, Token::Comment, Token::Whitespace, Token::B].contains(&self.token) {
+            self.bump();
+        }
         self.lookahead(&Token::Keyword(keyword))
     }
 

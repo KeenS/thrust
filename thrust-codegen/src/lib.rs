@@ -84,6 +84,7 @@ fn helper_ty_expr(_: &Context,
         Ty::I32 => "de.deserialize_i32()",
         Ty::I16 => "de.deserialize_i16()",
         Ty::I64 => "de.deserialize_i64()",
+        Ty::Bool => "de.deserialize_bool()",
         _ => panic!("Unexpected type to deserialize_arg: {:?}.", ty),
     };
     try!(rc.writer.write(expr.as_bytes()));
@@ -105,7 +106,7 @@ macro_rules! static_register_files {
 
 pub fn compile(parser: &mut Parser, wr: &mut Write) -> Result<(), Error> {
     let mut handlebars = Handlebars::new();
-    static_register_files!(handlebars, "base", "service", "service_client", "service_server", "method");
+    static_register_files!(handlebars, "base", "service", "service_client", "service_server", "struct", "method");
 
     handlebars.register_helper("expr", Box::new(helper_ty_expr));
     handlebars.register_helper("to_protocol", Box::new(helper_ty_to_protocol));
@@ -118,12 +119,21 @@ pub fn compile(parser: &mut Parser, wr: &mut Write) -> Result<(), Error> {
                 handlebars.render("base", &data).expect("faled to render base file")));
 
     loop {
+        let mut data: BTreeMap<String, Json> = BTreeMap::new();
         if parser.lookahead_keyword(Keyword::Enum) {
             parser.parse_enum()?;
         } else if parser.lookahead_keyword(Keyword::Struct) {
-            parser.parse_struct()?;
+            let struct_ = parser.parse_struct()?;
+            let json = json::encode(&struct_)
+                .ok()
+                .and_then(|s| Json::from_str(&s).ok())
+                .expect("internal error");
+            data.insert("struct".to_string(), json);
+            write!(wr,
+                   "{}",
+                   handlebars.render("struct", &data).expect("internal error"))
+                .expect("faled to render struct");
         } else if parser.lookahead_keyword(Keyword::Service) {
-            let mut data: BTreeMap<String, Json> = BTreeMap::new();
             let service = parser.parse_service()?;
             let json = json::encode(&service)
                 .ok()
