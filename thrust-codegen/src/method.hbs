@@ -1,1 +1,1 @@
-fn {{method.ident}}(&self{{#each method.args as |arg| ~}} , {{arg.ident}}: {{to_rust arg.ty}}{{/each ~}}) -> Box<Future<Item = {{method.ty}}, Error = io::Error>>
+fn {{method.ident}}(&self{{#each method.args as |arg| ~}} , {{arg.ident}}: {{to_rust arg.ty}}{{/each ~}}) -> Box<Future<Item = {{to_rust method.ty}}, Error = io::Error>>

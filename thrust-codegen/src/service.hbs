@@ -44,7 +44,7 @@ impl ParseThrift for {{service.ident}}ServiceMethods {
         use self::{{service.ident}}ServiceMethods::*;
         match self {
             {{~#each service.methods as |method|}}
-            &M{{method.ident}} => {{method.ty}}::deserialize(proto).map(R{{method.ident}}),
+            &M{{method.ident}} => {{to_rust method.ty}}::deserialize(proto).map(R{{method.ident}}),
             {{~/each}}
         }
     }
@@ -62,7 +62,7 @@ impl Serialize for {{service.ident}}ServiceMethodArgs {
     fn serialize<S>(&self, s: &mut S) -> Result<(), Error>
         where S: Serializer + ThriftSerializer
     {
-        use self::FlockServiceMethodArgs::*;
+        use self::{{service.ident}}ServiceMethodArgs::*;
         match self {
             {{~#each service.methods as |method|}}
             &A{{method.ident}}(ref b) => {
@@ -89,7 +89,7 @@ impl Serialize for {{service.ident}}ServiceMethodReturn {
     fn serialize<S>(&self, s: &mut S) -> Result<(), Error>
         where S: Serializer + ThriftSerializer
     {
-        use self::FlockServiceMethodReturn::*;
+        use self::{{service.ident}}ServiceMethodReturn::*;
         match self {
             {{~#each service.methods as |method|}}
             &R{{method.ident}}(ref b) => {
