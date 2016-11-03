@@ -1,35 +1,121 @@
 
 pub trait {{service.ident}}Service: Send {
-    {{#each service.methods as |method| ~}}
-    {{> method method = method}}
-    {{~/each }}
+    {{~#each service.methods as |method|}}
+    {{> method method = method}};
+    {{~/each}}
 }
 
-pub struct {{service.ident}}Client {
-    dispatcher: Sender<dispatcher::Incoming>,
-    pub handle: JoinHandle<ThrustResult<()>>,
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum {{service.ident}}ServiceMethods {
+    {{~#each service.methods as |method|}}
+    M{{method.ident}},
+    {{~/each}}
 }
 
-impl {{service.ident}}Client {
-    pub fn new(addr: SocketAddr) -> {{service.ident}}Client {
-        let (handle, tx) = Dispatcher::spawn(dispatcher::Role::Client(addr)).unwrap();
-        {{service.ident}}Client {
-            dispatcher: tx,
-            handle: handle,
+impl FromStr for {{service.ident}}ServiceMethods {
+    type Err = io::Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        use self::{{service.ident}}ServiceMethods::*;
+        match s {
+            {{~#each service.methods as |method|}}
+            "{{method.ident}}" => Ok(M{{method.ident}}),
+            {{~/each}}
+            _ => Err(io::Error::new(io::ErrorKind::InvalidData, "failed to parse thrift method data"))
         }
     }
 }
 
+
+impl ParseThrift for {{service.ident}}ServiceMethods {
+    type Args = {{service.ident}}ServiceMethodArgs;
+    type Ret = {{service.ident}}ServiceMethodReturn;
+    fn parse_args<D: Deserializer + ThriftDeserializer>(&self, proto: &mut D) -> Result<Self::Args, Error> {
+        use self::{{service.ident}}ServiceMethodArgs::*;
+        use self::{{service.ident}}ServiceMethods::*;
+        match self {
+            {{~#each service.methods as |method|}}
+            &M{{method.ident}} => {{../service.ident}}{{method.ident}}Args::deserialize(proto).map(A{{method.ident}}),
+            {{~/each}}
+        }
+    }
+
+    fn parse_ret<D: Deserializer + ThriftDeserializer>(&self, proto: &mut D) -> Result<Self::Ret, Error> {
+        use self::{{service.ident}}ServiceMethodReturn::*;
+        use self::{{service.ident}}ServiceMethods::*;
+        match self {
+            {{~#each service.methods as |method|}}
+            &M{{method.ident}} => {{method.ty}}::deserialize(proto).map(R{{method.ident}}),
+            {{~/each}}
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum {{service.ident}}ServiceMethodArgs {
+    {{~#each service.methods as |method|}}
+    A{{method.ident}}({{../service.ident}}{{method.ident}}Args),
+    {{~/each}}
+}
+
+
+impl Serialize for {{service.ident}}ServiceMethodArgs {
+    fn serialize<S>(&self, s: &mut S) -> Result<(), Error>
+        where S: Serializer + ThriftSerializer
+    {
+        use self::FlockServiceMethodArgs::*;
+        match self {
+            {{~#each service.methods as |method|}}
+            &A{{method.ident}}(ref b) => {
+                try!(s.write_message_begin("{{method.ident}}", ThriftMessageType::Call));
+                try!(b.serialize(s));
+                try!(s.write_message_end());
+            },
+            {{~/each}}
+        };
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum {{service.ident}}ServiceMethodReturn {
+    {{~#each service.methods as |method|}}
+    R{{method.ident}}({{to_rust method.ty}}),
+    {{~/each}}
+
+}
+
+
+impl Serialize for {{service.ident}}ServiceMethodReturn {
+    fn serialize<S>(&self, s: &mut S) -> Result<(), Error>
+        where S: Serializer + ThriftSerializer
+    {
+        use self::FlockServiceMethodReturn::*;
+        match self {
+            {{~#each service.methods as |method|}}
+            &R{{method.ident}}(ref b) => {
+                try!(s.write_message_begin("{{method.ident}}", ThriftMessageType::Reply));
+                try!(b.serialize(s));
+                try!(s.write_message_end());
+            },
+            {{~/each}}
+        };
+        Ok(())
+    }
+}
+
+
+
 {{#each service.methods as |method| ~}}
-struct {{../service.ident}}_{{method.ident}}_Args {
-    {{#each method.args as |arg| ~}}
-    {{arg.ident}}: {{arg.ty}}
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct {{../service.ident}}{{method.ident}}Args {
+    {{~#each method.args as |arg|}}
+    pub {{arg.ident}}: {{to_rust arg.ty}}
     {{~/each}}
 }
 {{/each ~}}
 
 {{#each service.methods as |method| ~}}
-impl Serialize for {{../service.ident}}_{{method.ident}}_Args {
+impl Serialize for {{../service.ident}}{{method.ident}}Args {
     fn serialize<S>(&self, s: &mut S) -> Result<(), Error>
         where S: Serializer + ThriftSerializer
     {
@@ -37,160 +123,52 @@ impl Serialize for {{../service.ident}}_{{method.ident}}_Args {
         {{#each method.args as |arg|~}}
         try!(s.write_field_begin("{{arg.ident}}", {{to_protocol arg.ty}}, {{arg.seq}}));
         try!(self.{{arg.ident}}.serialize(s));
-        try!(s.write_field_stop());
         try!(s.write_field_end());
         {{~/each}}
+        try!(s.write_field_stop());
         try!(s.write_struct_end());
         Ok(())
     }
 }
 {{/each}}
+
+
 {{#each service.methods as |method|}}
-impl Deserialize for {{../service.ident}}_{{method.ident}}_Args {
+impl Deserialize for {{../service.ident}}{{method.ident}}Args {
     fn deserialize<D>(de: &mut D) -> Result<Self, Error>
         where D: Deserializer + ThriftDeserializer,
     {
         try!(de.read_struct_begin());
-        let args = {{../service.ident}}_{{method.ident}}_Args {
-            {{#each args as |arg|~}}
-            {{arg.ident}}: {
-                match try!(de.read_field_begin()).ty {
-                    ThriftType::Stop => { try!(de.read_field_begin()); },
-                    _ => {},
-                }
-                let val = try!({{expr arg.ty}});
-                try!(de.read_field_end());
-                val
+        {{#each args as |arg|~}}
+        let mut {{arg.ident}} = None;
+        {{~/each}}
+        loop {
+            let scheme_field = try!(de.read_field_begin());
+            if scheme_field.ty == ThriftType::Stop {
+                break;
+            };
+            match scheme_field.seq {
+                {{#each args as |arg|~}}
+                {{arg.seq}} => {
+                    if scheme_field.ty == {{to_protocol arg.ty}} {
+                        {{arg.ident}} = Some(try!({{expr arg.ty}}));
+                    } else {
+                        // skip
+                    }
+                },
+                {{~/each}}
+                _ => (),// skip
             }
-            {{~/each}}
-        }
+            try!(de.read_field_end());
+        };
         try!(de.read_struct_end());
+        let args = {{../service.ident}}{{method.ident}}Args {
+            {{#each args as |arg|~}}
+            {{arg.ident}}: {{arg.ident}}.unwrap(),
+            {{~/each}}
+        };
         Ok(args)
     }
 }
 {{/each}}
 
-impl {{service.ident}}Service for {{service.ident}}Client {
-    {{#each service.methods as |method| ~}}
-    {{> method method = method}} {
-        use std::io::Cursor;
-        let (res, future) = Future::<(ThriftMessage, BinaryDeserializer<Cursor<Vec<u8>>>)>::channel();
-        let mut buf = Vec::new();
-        {
-            let mut se = BinarySerializer::new(&mut buf);
-            se.write_message_begin("{{method.ident}}", ThriftMessageType::Call);
-            let args = {{../service.ident}}_{{method.ident}}_Args {
-                {{#each args as |arg| ~}}
-                {{arg.ident}}: {{arg.ident}},
-                {{/each ~}}
-            };
-            args.serialize(&mut se);
-            se.write_message_end();
-        }
-        self.dispatcher.send(Incoming::Call("{{method.ident}}".to_string(), buf, Some(res))).unwrap();
-        future.and_then(move |(msg, de)| {
-            Async::Ok("foobar".to_string())
-        })
-    }
-    {{/each ~}}
-}
-
-
-pub struct {{service.ident}}Server {
-    dispatcher: Sender<dispatcher::Incoming>,
-    pub handle: JoinHandle<ThrustResult<()>>,
-}
-
-impl {{service.ident}}Server {
-    pub fn new<S>(service: S, addr: SocketAddr) -> {{service.ident}}Server
-        where S: 'static + {{service.ident}}Service
-    {
-        use std::thread;
-        use std::sync::mpsc::channel;
-        use std::io::Cursor;
-
-        let (sender, receiver) = channel();
-        let (handle, tx) = Dispatcher::spawn(dispatcher::Role::Server(addr, sender)).unwrap();
-
-        let send_tx = tx.clone();
-        thread::spawn(move || {
-            let mut runner = {{service.ident}}Runner::new(service);
-            for (token, buf) in receiver.iter() {
-                let mut de = BinaryDeserializer::new(Cursor::new(buf));
-                match de.read_message_begin() {
-                    Ok(msg) => {
-                        match runner.run(&mut de, msg) {
-                            Ok(f) => {
-                                let chan = send_tx.clone();
-                                f.and_then(move |buf| {
-                                    chan.send(Incoming::Reply(token, buf));
-                                    Async::Ok(())
-                                });
-                            },
-                            Err(err) => {
-                            }
-                        }
-                    },
-                    Err(err) => {
-                        println!("[server]: error parsing thrift message: {:?}", err);
-                    }
-                }
-            }
-        });
-
-        {{service.ident}}Server {
-            dispatcher: tx,
-            handle: handle,
-        }
-    }
-}
-
-pub struct {{service.ident}}Runner<S: {{service.ident}}Service> {
-    service: S,
-}
-
-impl<S> {{service.ident}}Runner<S> where S: {{service.ident}}Service {
-    pub fn new(service: S) -> {{service.ident}}Runner<S> {
-        {{service.ident}}Runner {
-            service: service,
-        }
-    }
-}
-
-impl<S> Runner for {{service.ident}}Runner<S>
-    where S: {{service.ident}}Service
-{
-    fn run<D>(&mut self, de: &mut D, msg: ThriftMessage) -> Result<Future<Vec<u8>>, Error>
-        where D: Deserializer + ThriftDeserializer
-    {
-        match &*msg.name {
-            {{~ #each service.methods as |method|}}
-            "{{method.ident}}" => {
-                let args: {{../service.ident}}_{{method.ident}}_Args = try!(Deserialize::deserialize(de));
-                let ret = self.service.{{method.ident}}(
-                    {{~ #each method.args as |arg|}}
-                    args.{{arg}},
-                    {{/each ~}}
-                ).map(|val| {
-                    let mut buf = Vec::new();
-                    {
-                        let mut s = BinarySerializer::new(&mut buf);
-
-                        s.write_message_begin("{{method.ident}}", ThriftMessageType::Reply);
-                        s.write_struct_begin("{{method.ident}}_ret");
-                        s.write_field_begin("ret", {{to_protocol method.ty}}, 1);
-                        val.serialize(&mut s);
-                        s.write_field_stop();
-                        s.write_field_end();
-                        s.write_struct_end();
-                        s.write_message_end();
-                    }
-                    buf
-                });
-                Ok(ret)
-            }
-            {{~ /each}}
-            _ => unimplemented!()
-        }
-    }
-}

@@ -180,10 +180,23 @@ fn helper_ty_to_protocol(_: &Context,
                  _: &Handlebars,
                  rc: &mut RenderContext)
                  -> Result<(), RenderError> {
-    let param = try!(h.param(0).ok_or(RenderError::new("Param 0 is required for to_string helper.")));
+    let param = try!(h.param(0).ok_or(RenderError::new("Param 0 is required for to_protocol helper.")));
     let rendered = param.value().render();
     let ty = Ty::from(rendered);
     let ret = ty.to_protocol();
+    try!(rc.writer.write(ret.as_bytes()));
+    Ok(())
+}
+
+fn helper_ty_to_rust(_: &Context,
+                 h: &Helper,
+                 _: &Handlebars,
+                 rc: &mut RenderContext)
+                 -> Result<(), RenderError> {
+    let param = try!(h.param(0).ok_or(RenderError::new("Param 0 is required for to_rust helper.")));
+    let rendered = param.value().render();
+    let ty = Ty::from(rendered);
+    let ret = ty.to_string();
     try!(rc.writer.write(ret.as_bytes()));
     Ok(())
 }
@@ -193,7 +206,7 @@ fn helper_ty_expr(_: &Context,
                  _: &Handlebars,
                  rc: &mut RenderContext)
                  -> Result<(), RenderError> {
-    let param = try!(h.param(0).ok_or(RenderError::new("Param 0 is required for to_string helper.")));
+    let param = try!(h.param(0).ok_or(RenderError::new("Param 0 is required for expr helper.")));
     let rendered = param.value().render();
     let ty = Ty::from(rendered);
     let expr = match ty {
@@ -216,6 +229,7 @@ pub fn compile(parser: &mut Parser, wr: &mut Write) -> Result<(), Error> {
     }
     handlebars.register_helper("expr", Box::new(helper_ty_expr));
     handlebars.register_helper("to_protocol", Box::new(helper_ty_to_protocol));
+    handlebars.register_helper("to_rust", Box::new(helper_ty_to_rust));
 
     let mut data: BTreeMap<String, Json> = BTreeMap::new();
 
