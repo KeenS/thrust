@@ -5,11 +5,11 @@ UNDER DEVELOPMENT, NOT READY TO USE
 
 * [ ] `const`
 * [ ] `typedef`
-* [x] `struct` (`optional` is not sopported yet)
-* [ ] `enum`
+* [x] `struct` (`optional` is not supported yet)
+* [ ] `enum` (`VARIANT = n` is not supported yet)
 * [ ] `union`
 * [ ] `exception`
-* [x] `service` (`optional` is not sopported yet)
+* [x] `service` (`optional` is not supported yet)
 
 and at `service` , exception handling not so matured that the server may hung when received corrupted data
 

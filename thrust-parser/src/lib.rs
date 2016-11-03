@@ -201,6 +201,25 @@ pub struct StructField {
 #[derive(Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub struct Typedef(pub Ty, pub String);
 
+#[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
+pub struct Const {
+    pub ident: String,
+    pub ty: Ty,
+    pub value: ConstValue,
+}
+
+#[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
+pub enum ConstValue {
+    Int(i64),
+    Double(f64),
+    String(String),
+    // not yet
+    List,
+    // not yet
+    Map,
+}
+
+
 #[derive(Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub struct Namespace {
     pub lang: String,
@@ -238,7 +257,7 @@ pub enum Token {
     RAngle,
     LParen,
     RParen,
-    Number(i16),
+    Number(i64),
     QuotedString(String),
     Ident(String),
     Keyword(Keyword),
@@ -255,6 +274,7 @@ pub enum Error {
     Expected,
     MissingFieldAttribute,
     ExpectedNumber,
+    ExpectedConstValue,
     ExpectedString,
     ExpectedKeyword(Keyword),
     ExpectedIdent,
@@ -325,14 +345,14 @@ impl<'a> Parser<'a> {
         let ident = self.parse_ident()?;
 
         Ok(StructField {
-            seq: seq,
+            seq: seq as i16,
             attr: attr,
             ty: ty,
             ident: ident
         })
     }
 
-    pub fn parse_number(&mut self) -> Result<i16, Error> {
+    pub fn parse_number(&mut self) -> Result<i64, Error> {
         self.skip_b();
 
         let n = match self.token {
@@ -393,6 +413,19 @@ impl<'a> Parser<'a> {
         Ok(Typedef(self.parse_ty()?, self.expect_ident()?))
     }
 
+    pub fn parse_const(&mut self) -> Result<Const, Error> {
+        self.expect_keyword(Keyword::Const)?;
+        let ty = self.parse_ty()?;
+        Ok(Const {
+            ident: self.expect_ident()?,
+            ty: ty.clone(),
+            value: {
+                self.eat(&Token::Eq);
+                self.expect_constvalue(ty.clone())?
+            }
+        })
+    }
+
     pub fn parse_namespace(&mut self) -> Result<Namespace, Error> {
         self.expect_keyword(Keyword::Namespace)?;
 
@@ -442,7 +475,7 @@ impl<'a> Parser<'a> {
                 let field_ident = self.parse_ident()?;
 
                 method_fields.push(StructField {
-                    seq: seq,
+                    seq: seq as i16,
                     attr: FieldAttribute::Required,
                     ty: field_ty,
                     ident: field_ident
@@ -482,6 +515,24 @@ impl<'a> Parser<'a> {
         let val = match self.token {
             Token::QuotedString(ref s) => s.clone(),
             _ => return Err(Error::ExpectedString)
+        };
+
+        self.bump();
+        Ok(val)
+    }
+
+    pub fn expect_constvalue(&mut self, ty: Ty) -> Result<ConstValue, Error> {
+        println!("{:?}: {:?}", self.token, ty);
+        let val = match (&self.token, ty) {
+            (&Token::Number(i), Ty::Bool) |
+            (&Token::Number(i), Ty::Byte) |
+            (&Token::Number(i), Ty::I16) |
+            (&Token::Number(i), Ty::I32) |
+            (&Token::Number(i), Ty::I64)
+                => ConstValue::Int(i as i64),
+            (&Token::QuotedString(ref s), Ty::String)
+                => ConstValue::String(s.clone()),
+            _ => return Err(Error::ExpectedConstValue)
         };
 
         self.bump();

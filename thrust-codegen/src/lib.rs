@@ -106,7 +106,7 @@ macro_rules! static_register_files {
 
 pub fn compile(parser: &mut Parser, wr: &mut Write) -> Result<(), Error> {
     let mut handlebars = Handlebars::new();
-    static_register_files!(handlebars, "base", "service", "service_client", "service_server", "struct", "method");
+    static_register_files!(handlebars, "base", "service", "service_client", "service_server", "struct", "enum", "typedef", "const", "method");
 
     handlebars.register_helper("expr", Box::new(helper_ty_expr));
     handlebars.register_helper("to_protocol", Box::new(helper_ty_to_protocol));
@@ -121,7 +121,16 @@ pub fn compile(parser: &mut Parser, wr: &mut Write) -> Result<(), Error> {
     loop {
         let mut data: BTreeMap<String, Json> = BTreeMap::new();
         if parser.lookahead_keyword(Keyword::Enum) {
-            parser.parse_enum()?;
+            let enum_ = parser.parse_enum()?;
+            let json = json::encode(&enum_)
+                .ok()
+                .and_then(|s| Json::from_str(&s).ok())
+                .expect("internal error");
+            data.insert("enum".to_string(), json);
+            write!(wr,
+                   "{}",
+                   handlebars.render("enum", &data).expect("internal error"))
+                .expect("faled to render enum");
         } else if parser.lookahead_keyword(Keyword::Struct) {
             let struct_ = parser.parse_struct()?;
             let json = json::encode(&struct_)
@@ -133,6 +142,30 @@ pub fn compile(parser: &mut Parser, wr: &mut Write) -> Result<(), Error> {
                    "{}",
                    handlebars.render("struct", &data).expect("internal error"))
                 .expect("faled to render struct");
+        } else if parser.lookahead_keyword(Keyword::Typedef) {
+            let typedef = parser.parse_typedef()?;
+            let json = json::encode(&typedef)
+                .ok()
+                .and_then(|s| Json::from_str(&s).ok())
+                .expect("internal error");
+            data.insert("typedef".to_string(), json);
+            println!("{:?}", data);
+            write!(wr,
+                   "{}",
+                   handlebars.render("typedef", &data).expect("internal error"))
+                .expect("faled to render typedef");
+        } else if parser.lookahead_keyword(Keyword::Const) {
+            let const_ = parser.parse_const()?;
+            let json = json::encode(&const_)
+                .ok()
+                .and_then(|s| Json::from_str(&s).ok())
+                .expect("internal error");
+            data.insert("const".to_string(), json);
+            println!("{:?}", data);
+            write!(wr,
+                   "{}",
+                   handlebars.render("const", &data).expect("internal error"))
+                .expect("faled to render const_");
         } else if parser.lookahead_keyword(Keyword::Service) {
             let service = parser.parse_service()?;
             let json = json::encode(&service)
