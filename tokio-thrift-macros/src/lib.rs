@@ -1,131 +1,83 @@
 #![crate_type="dylib"]
-#![feature(plugin_registrar, quote, rustc_private, question_mark, concat_idents)]
-
-extern crate tokio_thrift_parser;
+#![feature(plugin_registrar, rustc_private)]
 extern crate syntax;
 extern crate rustc;
 extern crate rustc_plugin;
+extern crate tokio_thrift_codegen;
+extern crate tokio_thrift_parser;
 
-use tokio_thrift_parser::{Ast, Parser};
+use syntax::tokenstream::TokenTree;
+use syntax::ext::base::{self, ExtCtxt, MacResult, DummyResult, get_single_str_from_tts};
+use syntax::ext::quote::rt::Span;
+use syntax::{ast, ptr};
+use syntax::parse::{self, token, new_parser_from_source_str};
 use syntax::util::small_vector::SmallVector;
-use std::iter::Iterator;
-use syntax::codemap::Span;
-use syntax::fold::Folder;
-use syntax::parse::{parser, token};
-use syntax::print::pprust;
-use syntax::ast::{self, TokenTree};
-use syntax::ptr::P;
-use syntax::ext::base::{ExtCtxt, MacResult, DummyResult, MacEager};
 use rustc_plugin::Registry;
+use tokio_thrift_parser::Parser;
+use tokio_thrift_codegen::{compile, find_rust_namespace};
+use std::io::Write;
 
-pub struct Compiler<'a: 'x, 'x> {
-    inner: parser::Parser<'a>,
-    cx: &'x mut ExtCtxt<'a>
-}
-
-impl<'a, 'x> Compiler<'a, 'x> {
-    pub fn new(cx: &'x mut ExtCtxt<'a>, args: &[TokenTree]) -> Compiler<'a, 'x> {
-        Compiler::<'a, 'x> {
-            inner: cx.new_parser_from_tts::<'a>(args),
-            cx: cx
+macro_rules! panictry {
+    ($e: expr) => {
+        match $e {
+            Ok(e) => e,
+            // FIXME: raise appropriate error
+            Err(e) => panic!("error: {:?}", e),
         }
-    }
-
-    pub fn parse(&mut self) -> Option<String> {
-        if let Ok(expr) = self.inner.parse_expr() {
-            let entry = self.cx.expander().fold_expr(expr);
-            let th = match entry.node {
-                ast::ExprKind::Lit(ref lit) => {
-                    match lit.node {
-                        ast::LitKind::Str(ref s, _) => s.to_string(),
-                        _ => {
-                            self.cx.span_err(entry.span, &format!(
-                             "expected string literal but got `{}`",
-                             pprust::lit_to_string(&**lit)));
-                            return None;
-                        }
-                    }
-                },
-                _ => {
-                    self.cx.span_err(entry.span, &format!(
-                    "expected string literal but got `{}`",
-                    pprust::expr_to_string(&*entry)));
-                    return None
-                }
-            };
-            if !self.inner.eat(&token::Eof) {
-                self.cx.span_err(self.inner.span, "only one string literal allowed");
-                return None;
-            }
-
-            Some(th)
-        } else {
-            self.cx.parse_sess().span_diagnostic.err("failure parsing token tree");
-            return None;
-        }
-    }
-
-    pub fn code(&mut self, input: String) -> Result<P<ast::Item>, tokio_thrift_parser::Error> {
-        let mut parser = Parser::new(&input);
-        let mut items = Vec::new();
-
-        // We expect a namespace to appear first.
-        let ns = parser.parse_namespace()?;
-        let module = token::str_to_ident(&ns.module);
-
-        while let Ok(node) = parser.parse_item() {
-            match node.ir(self.cx) {
-                Some(item) => items.push(item),
-                // The node didn't want to export an item. All good!
-                None => {}
-            }
-
-            let v = node.second_ir(self.cx);
-
-            for item in v.into_iter() {
-                items.push(item);
-            }
-        }
-
-        // pieces.push(parser.parse_enum()?.ir(self.cx));
-        // pieces.push(parser.parse_struct()?.ir(self.cx));
-
-        Ok(quote_item!(self.cx, pub mod $module {
-            #![allow(dead_code, unused_imports)]
-            use tokio_thrift::protocol::{Error, ThriftType};
-            use tokio_thrift::{ThrustResult, ThrustError};
-            use tokio_thrift::dispatcher::{self, Dispatcher, Incoming};
-            use tokio_thrift::reactor::Message;
-            use std::thread::JoinHandle;
-            use std::net::SocketAddr;
-            use std::sync::mpsc::{Sender, Receiver};
-            use tangle::{Future, Async};
-            use std::collections::{HashMap, HashSet};
-            use tokio_thrift::protocol::{ThriftDeserializer, ThriftSerializer};
-            use tokio_thrift::protocol::{Serializer, Deserializer};
-            use tokio_thrift::protocol::{Deserialize, Serialize, ThriftMessage};
-            use tokio_thrift::binary_protocol::{BinarySerializer, BinaryDeserializer};
-            $items
-        }).unwrap())
     }
 }
 
-fn expand_rn(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree]) -> Box<MacResult + 'static> {
-    if args.len() == 0 {
-        // XXX: Return an empty future.
-        return DummyResult::any(sp);
-    }
 
-    let mut compiler = Compiler::new(cx, args);
-    let input = match compiler.parse() {
-        Some(s) => s,
-        None => panic!("Expected a string")
+fn thrift_codegen<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[TokenTree])
+        -> Box<MacResult + 'cx> {
+
+    let text = match get_single_str_from_tts(cx, sp, tts, "thrift!") {
+        Some(f) => f,
+        None => return DummyResult::expr(sp),
     };
 
-    MacEager::items(SmallVector::one(compiler.code(input).unwrap()))
+
+    let mut output = Vec::new();
+    let mut tparser = Parser::new(&text);
+    let ns = find_rust_namespace(&mut tparser).expect("cannot find namespace");
+    output.write_all(format!("mod {} {{", ns.module).as_ref()).expect("internal error failed to write the vec");
+    compile(&mut tparser, &mut output).expect("failed to generate code");
+    output.write_all(format!("}}").as_ref()).expect("internal error failed to write the vec");
+    let output = match std::str::from_utf8(&output) {
+        Ok(s) => s,
+        Err(_) => "",
+    };
+
+    println!("{}", output);
+
+
+    let parser = new_parser_from_source_str(cx.parse_sess(), "thrift!".to_string(), output.to_string());
+
+    struct ExpandResult<'a> {
+        p: parse::parser::Parser<'a>,
+    }
+    impl<'a> base::MacResult for ExpandResult<'a> {
+        fn make_items(mut self: Box<ExpandResult<'a>>)
+                      -> Option<SmallVector<ptr::P<ast::Item>>> {
+            let mut ret = SmallVector::zero();
+            while self.p.token != token::Eof {
+                match panictry!(self.p.parse_item()) {
+                    Some(item) => ret.push(item),
+                    None => panic!(self.p.diagnostic().span_fatal(self.p.span,
+                                                                  &format!("expected item, found `{}`",
+                                                                           self.p.this_token_to_string())))
+                }
+            }
+            Some(ret)
+        }
+    }
+
+    Box::new(ExpandResult { p: parser })
+
+
 }
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
-    reg.register_macro("tokio_thrift", expand_rn);
+    reg.register_macro("thrift", thrift_codegen);
 }

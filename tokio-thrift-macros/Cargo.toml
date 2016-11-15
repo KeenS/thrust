@@ -11,3 +11,6 @@ plugin = true
 
 [dependencies.tokio-thrift-parser]
 path = "../tokio-thrift-parser"
+
+[dependencies.tokio-thrift-codegen]
+path = "../tokio-thrift-codegen"

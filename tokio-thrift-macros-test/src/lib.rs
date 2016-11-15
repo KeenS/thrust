@@ -1,17 +1,20 @@
 #![feature(plugin)]
 #![plugin(tokio_thrift_macros)]
 
+extern crate futures;
+extern crate tokio_core;
+extern crate tokio_proto;
+extern crate tokio_service;
 extern crate tokio_thrift;
-extern crate tangle;
 
-use tokio_thrift::reactor::Reactor;
-use tokio_thrift::binary_protocol::*;
-use tokio_thrift::protocol::*;
-use std::net::SocketAddr;
-use std::io::{Cursor, Read, Write};
+// use tokio_thrift::binary_protocol::*;
+// use tokio_thrift::protocol::*;
+// use std::net::SocketAddr;
+// use std::io::{Cursor, Read, Write};
+// use futures::{Future, done};
 
-tokio_thrift!("
-    namespace rust foobar1
+thrift!("
+    namespace rust foobar1;
 
     service FlockDb {
         string query(1: string voodoo, 2: i32 mission_control);
@@ -30,7 +33,7 @@ fn args_deserialize_gen() {
     let mut buf = Vec::new();
 
     {
-        let mut se = BinarySerializer::new(&mut buf);
+        let mut se = BinaryProtocol::new(&mut buf);
         let args = foobar1::FlockDb_query_Args {
             voodoo: "Hello".to_string(),
             mission_control: 500
@@ -40,7 +43,7 @@ fn args_deserialize_gen() {
     }
 
     let mut rd = Cursor::new(buf);
-    let mut de = BinaryDeserializer::new(rd);
+    let mut de = BinaryProtocol::new(rd);
     let args = foobar1::FlockDb_query_Args::deserialize(&mut de).unwrap();
     assert_eq!(&*args.voodoo, "Hello");
     assert_eq!(args.mission_control, 500);
@@ -51,7 +54,7 @@ fn manual_args_deserialize() {
     let mut buf = Vec::new();
 
     {
-        let mut se = BinarySerializer::new(&mut buf);
+        let mut se = BinaryProtocol::new(&mut buf);
         se.write_struct_begin("FlockDb_query_Args").unwrap();
 
         se.write_field_begin("voodoo", ThriftType::String, 1).unwrap();
@@ -69,7 +72,7 @@ fn manual_args_deserialize() {
     }
 
     let mut rd = Cursor::new(buf);
-    let mut de = BinaryDeserializer::new(rd);
+    let mut de = BinaryProtocol::new(rd);
     let msg = de.read_struct_begin().unwrap();
     let voodoo = de.read_field_begin().unwrap();
     assert!(voodoo.name.is_none());
@@ -89,7 +92,7 @@ fn serialize() {
     let mut comp = Vec::new();
 
     {
-        let mut se = BinarySerializer::new(&mut buf);
+        let mut se = BinaryProtocol::new(&mut buf);
         let args = foobar1::FlockDb_query_Args {
             voodoo: "Hello".to_string(),
             mission_control: 500
@@ -99,7 +102,7 @@ fn serialize() {
     }
 
     {
-        let mut se = BinarySerializer::new(&mut comp);
+        let mut se = BinaryProtocol::new(&mut comp);
         se.write_struct_begin("FlockDb_query_Args").unwrap();
 
         se.write_field_begin("voodoo", ThriftType::String, 1).unwrap();
