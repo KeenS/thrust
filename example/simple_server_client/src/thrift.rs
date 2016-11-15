@@ -5,7 +5,7 @@ use thrust::protocol::{ThriftDeserializer, ThriftSerializer, ThriftMessageType};
 use thrust::protocol::{Error, ThriftType};
 use thrust::protocol::{Serializer, Deserializer};
 use thrust::protocol::{Deserialize, Serialize};
-use thrust_tokio::framed_transport::*;
+use thrust::framed_transport::*;
 use tokio_core::reactor::Handle;
 use tokio_core::net::TcpStream;
 use tokio_proto::server;

@@ -1,4 +1,4 @@
-#![feature(question_mark, quote, associated_type_defaults)]
+#![feature(quote, associated_type_defaults)]
 extern crate rustc_serialize;
 use rustc_serialize::{Decodable, Encodable, Decoder, Encoder};
 use std::char;
@@ -629,10 +629,6 @@ impl<'a> Parser<'a> {
 
     fn next_char(&self) -> char {
         self.buffer[self.pos..].chars().next().unwrap()
-    }
-
-    fn starts_with(&self, s: &str) -> bool {
-        self.buffer[self.pos ..].starts_with(s)
     }
 
     fn eof(&self) -> bool {

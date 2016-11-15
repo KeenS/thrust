@@ -1,5 +1,3 @@
-#![feature(question_mark)]
-
 extern crate handlebars;
 extern crate rustc_serialize;
 extern crate thrust_parser;

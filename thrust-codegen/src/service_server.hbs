@@ -39,9 +39,9 @@ impl <T>Service for {{service.ident}}Server<T>
         use thrift::{{service.ident}}ServiceMethodReturn::*;
         match req {
             {{~#each service.methods as |method|}}
-            A{{method.ident}}(args)  => Box::new(self.inner.{{method.ident}}(
+            A{{method.ident}}(_args)  => Box::new(self.inner.{{method.ident}}(
                 {{~#each method.args as |arg|}}
-                args.{{arg.ident}},
+                _args.{{arg.ident}},
                 {{~/each}}
             ).map(R{{method.ident}})),
             {{~/each}}
