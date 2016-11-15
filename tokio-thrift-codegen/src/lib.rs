@@ -102,7 +102,7 @@ macro_rules! static_register_files {
 }
 
 
-pub fn compile(parser: &mut Parser, wr: &mut Write) -> Result<(), Error> {
+pub fn compile(mut parser: &mut Parser, wr: &mut Write) -> Result<(), Error> {
     let mut handlebars = Handlebars::new();
     static_register_files!(handlebars, "base", "service", "service_client", "service_server", "struct", "enum", "typedef", "const", "method");
 
@@ -111,13 +111,16 @@ pub fn compile(parser: &mut Parser, wr: &mut Write) -> Result<(), Error> {
     handlebars.register_helper("to_rust", Box::new(helper_ty_to_rust));
 
 
-    let data: BTreeMap<String, Json> = BTreeMap::new();
+    let mut data: BTreeMap<String, Json> = BTreeMap::new();
+    let namespace = find_rust_namespace(&mut parser).map(|n| n.module).unwrap_or("self".to_string());
+    data.insert("namespace".to_string(), Json::String(namespace));
+
     try!(write!(wr,
                 "{}",
                 handlebars.render("base", &data).expect("faled to render base file")));
 
     loop {
-        let mut data: BTreeMap<String, Json> = BTreeMap::new();
+
         if parser.lookahead_keyword(Keyword::Enum) {
             let enum_ = parser.parse_enum()?;
             let json = json::encode(&enum_)

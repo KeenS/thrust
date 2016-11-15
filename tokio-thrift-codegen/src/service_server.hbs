@@ -35,8 +35,8 @@ impl <T>Service for {{service.ident}}Server<T>
 
 
     fn call(&self, req: Self::Request) -> Self::Future {
-        use thrift::{{service.ident}}ServiceMethodArgs::*;
-        use thrift::{{service.ident}}ServiceMethodReturn::*;
+        use {{../namespace}}::{{service.ident}}ServiceMethodArgs::*;
+        use {{../namespace}}::{{service.ident}}ServiceMethodReturn::*;
         match req {
             {{~#each service.methods as |method|}}
             A{{method.ident}}(_args)  => Box::new(self.inner.{{method.ident}}(

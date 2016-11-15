@@ -30,8 +30,8 @@ impl Service for {{service.ident}}Client {
 impl {{service.ident}}Service for {{service.ident}}Client {
     {{~#each service.methods as |method|}}
     {{> method method = method}} {
-        use thrift::{{../service.ident}}ServiceMethodArgs::*;
-        use thrift::{{../service.ident}}ServiceMethodReturn::*;
+        use {{../namespace}}::{{../service.ident}}ServiceMethodArgs::*;
+        use {{../namespace}}::{{../service.ident}}ServiceMethodReturn::*;
         let args = {{../service.ident}}{{method.ident}}Args {
             {{~#each args as |arg| }}
             {{arg.ident}}: {{arg.ident}},

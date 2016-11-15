@@ -109,7 +109,7 @@ impl Serialize for {{service.ident}}ServiceMethodReturn {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct {{../service.ident}}{{method.ident}}Args {
     {{~#each method.args as |arg|}}
-    pub {{arg.ident}}: {{to_rust arg.ty}}
+    pub {{arg.ident}}: {{to_rust arg.ty}},
     {{~/each}}
 }
 {{/each ~}}
