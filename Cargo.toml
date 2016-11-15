@@ -9,6 +9,10 @@ keywords = ["thrift", "rpc", "async", "networking"]
 license = "MIT"
 authors = ["Daniel Fagnan <dnfagnan@gmail.com>", "Sunrin SHIMURA (keen) <3han5chou7@gmail.com>"]
 
+[[bin]]
+name = "tokio-thrift"
+path = "src/bin/tokio_thrift.rs"
+
 [dependencies]
 byteorder = "0.4"
 docopt = "0.6"

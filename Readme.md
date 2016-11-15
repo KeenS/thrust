@@ -27,7 +27,7 @@ cargo install
 then, run this command in your project to generate rust file
 
 ```
-thrust your_file.thrift src/
+tokio-thrift your_file.thrift src/
 ```
 
 and write this at your Cargo.toml
