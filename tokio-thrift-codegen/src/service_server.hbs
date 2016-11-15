@@ -47,8 +47,4 @@ impl <T>Service for {{service.ident}}Server<T>
             {{~/each}}
         }
     }
-
-    fn poll_ready(&self) -> Async<()> {
-        Async::Ready(())
-    }
 }

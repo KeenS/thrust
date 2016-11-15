@@ -6,6 +6,3 @@ authors = ["Daniel Fagnan <dnfagnan@gmail.com>"]
 [dependencies]
 handlebars = "^0.22"
 rustc-serialize = "^0.3.15"
-
-[dependencies.tokio-thrift-parser]
-path = "../tokio-thrift-parser"

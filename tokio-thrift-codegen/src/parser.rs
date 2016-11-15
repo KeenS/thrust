@@ -1,4 +1,3 @@
-#![feature(quote, associated_type_defaults)]
 extern crate rustc_serialize;
 use rustc_serialize::{Decodable, Encodable, Decoder, Encoder};
 use std::char;
@@ -47,7 +46,7 @@ impl Decodable for Ty {
 
 impl Encodable for Ty {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        use Ty::*;
+        use self::Ty::*;
         s.emit_enum("Ty", |s| {
             match self {
                 &String => s.emit_enum_variant("string", 0, 0, |_| Ok(())),

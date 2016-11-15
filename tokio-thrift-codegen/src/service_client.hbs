@@ -21,10 +21,6 @@ impl Service for {{service.ident}}Client {
         self.inner.call(arg)
             .boxed()
     }
-
-    fn poll_ready(&self) -> Async<()> {
-        Async::Ready(())
-    }
 }
 
 impl {{service.ident}}Service for {{service.ident}}Client {

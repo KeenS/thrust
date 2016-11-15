@@ -4,7 +4,6 @@ extern crate syntax;
 extern crate rustc;
 extern crate rustc_plugin;
 extern crate tokio_thrift_codegen;
-extern crate tokio_thrift_parser;
 
 use syntax::tokenstream::TokenTree;
 use syntax::ext::base::{self, ExtCtxt, MacResult, DummyResult, get_single_str_from_tts};
@@ -13,7 +12,7 @@ use syntax::{ast, ptr};
 use syntax::parse::{self, token, new_parser_from_source_str};
 use syntax::util::small_vector::SmallVector;
 use rustc_plugin::Registry;
-use tokio_thrift_parser::Parser;
+use tokio_thrift_codegen::parser::Parser;
 use tokio_thrift_codegen::{compile, find_rust_namespace};
 use std::io::Write;
 
