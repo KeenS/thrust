@@ -124,7 +124,7 @@ impl Serialize for HelloServiceMethodReturn {
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Hellohello_nameArgs {
-    pub name: String
+    pub name: String,
 }
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct HellohelloArgs {
@@ -245,8 +245,8 @@ impl Service for HelloClient {
 
 impl HelloService for HelloClient {
     fn hello_name(&self, name: String) -> Box<Future<Item = String, Error = io::Error>> {
-        use thrift::HelloServiceMethodArgs::*;
-        use thrift::HelloServiceMethodReturn::*;
+        use self::HelloServiceMethodArgs::*;
+        use self::HelloServiceMethodReturn::*;
         let args = Hellohello_nameArgs {
             name: name,
         };
@@ -260,8 +260,8 @@ impl HelloService for HelloClient {
         Box::new(ret)
     }
     fn hello(&self) -> Box<Future<Item = String, Error = io::Error>> {
-        use thrift::HelloServiceMethodArgs::*;
-        use thrift::HelloServiceMethodReturn::*;
+        use self::HelloServiceMethodArgs::*;
+        use self::HelloServiceMethodReturn::*;
         let args = HellohelloArgs {
         };
         let ret = self.call(Ahello(args)).map(|r| {
@@ -311,8 +311,8 @@ impl <T>Service for HelloServer<T>
 
 
     fn call(&self, req: Self::Request) -> Self::Future {
-        use thrift::HelloServiceMethodArgs::*;
-        use thrift::HelloServiceMethodReturn::*;
+        use self::HelloServiceMethodArgs::*;
+        use self::HelloServiceMethodReturn::*;
         match req {
             Ahello_name(_args)  => Box::new(self.inner.hello_name(
                 _args.name,
