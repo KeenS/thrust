@@ -4,23 +4,23 @@ A fork project of [thehydroimpulse/thrust: Thrift RPC in Rust (Async I/O) http:/
 UNDER DEVELOPMENT, NOT READY TO USE
 
 * [ ] `const`
-* [ ] `typedef`
+* [x] `typedef`
 * [x] `struct` (`optional` is not supported yet)
-* [ ] `enum` (`VARIANT = n` is not supported yet)
+* [x] `enum` (`VARIANT = n` is not supported yet)
 * [ ] `union`
 * [ ] `exception`
 * [x] `service` (`optional` is not supported yet)
 
-and at `service` , exception handling not so matured that the server may hung when received corrupted data
+and at `service` , exception handling is not so matured that the server may hung when received corrupted data
 
 # Installing
-Note again that this project is NOT READY TO USE.
+Notice again that this project is NOT READY TO USE.
 
 First, checkout this project and install the binary
 
 ```
-git clone https://github.com/KeenS/thrust
-cd thrust
+git clone https://github.com/KeenS/tokio-thrift
+cd tokio-thrift
 cargo install
 ```
 
@@ -34,8 +34,7 @@ and write this at your Cargo.toml
 
 ```toml
 [dependencies]
-thrust = {git = "path/to/thrust"}
-thrust-tokio = {git = "path/to/thrust/thrust-tokio"}
+tokio-thrift = {git = "path/to/tokio-thrift"}
 ```
 
 # More
