@@ -1,5 +1,3 @@
-#![feature(associated_type_defaults)]
-
 extern crate mio;
 extern crate byteorder;
 #[macro_use]
