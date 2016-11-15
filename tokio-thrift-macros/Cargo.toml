@@ -1,13 +1,13 @@
 [package]
-name = "thrust_macros"
+name = "tokio-thrift-macros"
 version = "0.1.0"
 authors = ["Daniel Fagnan <dnfagnan@gmail.com>"]
 
 [lib]
 crate-type = ["dylib"]
-name = "thrust_macros"
+name = "tokio_thrift_macros"
 path = "src/lib.rs"
 plugin = true
 
-[dependencies.thrust_parser]
-path = "../thrust-parser"
+[dependencies.tokio-thrift-parser]
+path = "../tokio-thrift-parser"

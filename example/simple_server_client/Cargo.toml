@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["Sunrin SHIMURA (keen) <3han5chou7@gmail.com>"]
 
 [dependencies]
-thrust = { path = "../../"}
+tokio-thrift = { path = "../../"}
 futures = "0.1.3"
 tokio-core = "0.1"
 tokio-proto = { git = "https://github.com/tokio-rs/tokio-proto" }

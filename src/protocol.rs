@@ -185,10 +185,10 @@ pub trait Deserialize: Sized {
 
 /// ```
 /// use std::io::Cursor;
-/// use thrust::binary_protocol::BinaryDeserializer;
-/// use thrust::protocol::Deserialize;
+/// use tokio_thrift::binary_protocol::BinaryProtocol;
+/// use tokio_thrift::protocol::Deserialize;
 ///
-/// let mut de = BinaryDeserializer::new(Cursor::new(vec![100u8]));
+/// let mut de = BinaryProtocol::new(Cursor::new(vec![100u8]));
 /// let val: u8 = Deserialize::deserialize(&mut de).unwrap();
 /// assert_eq!(val, 100);
 /// ```
@@ -210,10 +210,10 @@ impl Deserialize for bool {
 
 /// ```
 /// use std::io::Cursor;
-/// use thrust::binary_protocol::BinaryDeserializer;
-/// use thrust::protocol::Deserialize;
+/// use tokio_thrift::binary_protocol::BinaryProtocol;
+/// use tokio_thrift::protocol::Deserialize;
 ///
-/// let mut de = BinaryDeserializer::new(Cursor::new(vec![100u8]));
+/// let mut de = BinaryProtocol::new(Cursor::new(vec![100u8]));
 /// let val: i8 = Deserialize::deserialize(&mut de).unwrap();
 /// assert_eq!(val, 100);
 /// ```
@@ -405,12 +405,12 @@ impl<'a> Serialize for &'a [u8] {
 mod tests {
     use super::*;
     use byteorder::{BigEndian, WriteBytesExt, ReadBytesExt};
-    use binary_protocol::BinaryDeserializer;
+    use binary_protocol::BinaryProtocol;
     use std::io::{Write, Cursor};
 
     #[test]
     fn deserialize_bool() {
-        let mut de = BinaryDeserializer::new(Cursor::new(vec![1u8]));
+        let mut de = BinaryProtocol::new(Cursor::new(vec![1u8]));
         let val: bool = Deserialize::deserialize(&mut de).unwrap();
         assert_eq!(val, true);
     }
@@ -419,7 +419,7 @@ mod tests {
     fn deserialize_u16() {
         let mut buf = Vec::new();
         buf.write_u16::<BigEndian>(32000);
-        let mut de = BinaryDeserializer::new(Cursor::new(buf));
+        let mut de = BinaryProtocol::new(Cursor::new(buf));
         let val: u16 = Deserialize::deserialize(&mut de).unwrap();
         assert_eq!(val, 32000);
     }
@@ -428,7 +428,7 @@ mod tests {
     fn deserialize_i16() {
         let mut buf = Vec::new();
         buf.write_i16::<BigEndian>(-32000);
-        let mut de = BinaryDeserializer::new(Cursor::new(buf));
+        let mut de = BinaryProtocol::new(Cursor::new(buf));
         let val: i16 = Deserialize::deserialize(&mut de).unwrap();
         assert_eq!(val, -32000);
     }
@@ -437,7 +437,7 @@ mod tests {
     fn deserialize_u32() {
         let mut buf = Vec::new();
         buf.write_u32::<BigEndian>(32000);
-        let mut de = BinaryDeserializer::new(Cursor::new(buf));
+        let mut de = BinaryProtocol::new(Cursor::new(buf));
         let val: u32 = Deserialize::deserialize(&mut de).unwrap();
         assert_eq!(val, 32000);
     }
@@ -446,7 +446,7 @@ mod tests {
     fn deserialize_i32() {
         let mut buf = Vec::new();
         buf.write_i32::<BigEndian>(32000);
-        let mut de = BinaryDeserializer::new(Cursor::new(buf));
+        let mut de = BinaryProtocol::new(Cursor::new(buf));
         let val: i32 = Deserialize::deserialize(&mut de).unwrap();
         assert_eq!(val, 32000);
     }
@@ -455,7 +455,7 @@ mod tests {
     fn deserialize_u64() {
         let mut buf = Vec::new();
         buf.write_u64::<BigEndian>(32000);
-        let mut de = BinaryDeserializer::new(Cursor::new(buf));
+        let mut de = BinaryProtocol::new(Cursor::new(buf));
         let val: u64 = Deserialize::deserialize(&mut de).unwrap();
         assert_eq!(val, 32000);
     }
@@ -464,7 +464,7 @@ mod tests {
     fn deserialize_i64() {
         let mut buf = Vec::new();
         buf.write_i64::<BigEndian>(32000);
-        let mut de = BinaryDeserializer::new(Cursor::new(buf));
+        let mut de = BinaryProtocol::new(Cursor::new(buf));
         let val: i64 = Deserialize::deserialize(&mut de).unwrap();
         assert_eq!(val, 32000);
     }
@@ -475,7 +475,7 @@ mod tests {
         let i = "foobar";
         buf.write_i32::<BigEndian>(i.len() as i32);
         buf.write(i.as_bytes());
-        let mut de = BinaryDeserializer::new(Cursor::new(buf));
+        let mut de = BinaryProtocol::new(Cursor::new(buf));
         let val: String = Deserialize::deserialize(&mut de).unwrap();
         assert_eq!(&*val, "foobar");
     }

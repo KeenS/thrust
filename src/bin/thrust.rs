@@ -1,5 +1,5 @@
-extern crate thrust_codegen;
-extern crate thrust_parser;
+extern crate tokio_thrift_codegen;
+extern crate tokio_thrift_parser;
 extern crate rustc_serialize;
 extern crate docopt;
 
@@ -8,15 +8,15 @@ use docopt::Docopt;
 use std::io::Read;
 use std::fs::File;
 use std::path::Path;
-use thrust_parser::Parser;
-use thrust_codegen::{compile, find_rust_namespace};
+use tokio_thrift_parser::Parser;
+use tokio_thrift_codegen::{compile, find_rust_namespace};
 
 const USAGE: &'static str = "
 Thrust: Thrift compiler for Rust
 
 Usage:
-  thrust <input> <output>
-  thrust --version
+  tokio_thrift <input> <output>
+  tokio_thrift --version
 
 Options:
   -h --help     Show this screen.

@@ -1,16 +1,16 @@
 #![feature(plugin)]
-#![plugin(thrust_macros)]
+#![plugin(tokio_thrift_macros)]
 
-extern crate thrust;
+extern crate tokio_thrift;
 extern crate tangle;
 
-use thrust::reactor::Reactor;
-use thrust::binary_protocol::*;
-use thrust::protocol::*;
+use tokio_thrift::reactor::Reactor;
+use tokio_thrift::binary_protocol::*;
+use tokio_thrift::protocol::*;
 use std::net::SocketAddr;
 use std::io::{Cursor, Read, Write};
 
-thrust!("
+tokio_thrift!("
     namespace rust foobar1
 
     service FlockDb {

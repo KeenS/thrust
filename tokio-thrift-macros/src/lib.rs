@@ -1,12 +1,12 @@
 #![crate_type="dylib"]
 #![feature(plugin_registrar, quote, rustc_private, question_mark, concat_idents)]
 
-extern crate thrust_parser;
+extern crate tokio_thrift_parser;
 extern crate syntax;
 extern crate rustc;
 extern crate rustc_plugin;
 
-use thrust_parser::{Ast, Parser};
+use tokio_thrift_parser::{Ast, Parser};
 use syntax::util::small_vector::SmallVector;
 use std::iter::Iterator;
 use syntax::codemap::Span;
@@ -65,7 +65,7 @@ impl<'a, 'x> Compiler<'a, 'x> {
         }
     }
 
-    pub fn code(&mut self, input: String) -> Result<P<ast::Item>, thrust_parser::Error> {
+    pub fn code(&mut self, input: String) -> Result<P<ast::Item>, tokio_thrift_parser::Error> {
         let mut parser = Parser::new(&input);
         let mut items = Vec::new();
 
@@ -92,19 +92,19 @@ impl<'a, 'x> Compiler<'a, 'x> {
 
         Ok(quote_item!(self.cx, pub mod $module {
             #![allow(dead_code, unused_imports)]
-            use thrust::protocol::{Error, ThriftType};
-            use thrust::{ThrustResult, ThrustError};
-            use thrust::dispatcher::{self, Dispatcher, Incoming};
-            use thrust::reactor::Message;
+            use tokio_thrift::protocol::{Error, ThriftType};
+            use tokio_thrift::{ThrustResult, ThrustError};
+            use tokio_thrift::dispatcher::{self, Dispatcher, Incoming};
+            use tokio_thrift::reactor::Message;
             use std::thread::JoinHandle;
             use std::net::SocketAddr;
             use std::sync::mpsc::{Sender, Receiver};
             use tangle::{Future, Async};
             use std::collections::{HashMap, HashSet};
-            use thrust::protocol::{ThriftDeserializer, ThriftSerializer};
-            use thrust::protocol::{Serializer, Deserializer};
-            use thrust::protocol::{Deserialize, Serialize, ThriftMessage};
-            use thrust::binary_protocol::{BinarySerializer, BinaryDeserializer};
+            use tokio_thrift::protocol::{ThriftDeserializer, ThriftSerializer};
+            use tokio_thrift::protocol::{Serializer, Deserializer};
+            use tokio_thrift::protocol::{Deserialize, Serialize, ThriftMessage};
+            use tokio_thrift::binary_protocol::{BinarySerializer, BinaryDeserializer};
             $items
         }).unwrap())
     }
@@ -127,5 +127,5 @@ fn expand_rn(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree]) -> Box<MacResult + 
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
-    reg.register_macro("thrust", expand_rn);
+    reg.register_macro("tokio_thrift", expand_rn);
 }

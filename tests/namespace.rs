@@ -1,6 +1,6 @@
-// extern crate thrust;
+// extern crate tokio_thrift;
 
-// use thrust::ThriftCompiler;
+// use tokio_thrift::ThriftCompiler;
 
 // pub const ns: &'static [u8] = b"namespace rust foobar\n";
 // pub const ns_1: &'static [u8] = b"

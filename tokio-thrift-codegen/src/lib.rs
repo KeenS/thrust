@@ -1,19 +1,19 @@
 extern crate handlebars;
 extern crate rustc_serialize;
-extern crate thrust_parser;
+extern crate tokio_thrift_parser;
 
 use std::io::{self, Write};
 use std::collections::BTreeMap;
 use rustc_serialize::json::{self, Json};
 use handlebars::{Handlebars, RenderError, RenderContext, Helper, Context, JsonRender};
-use thrust_parser::{Ty, Namespace, Parser, Keyword};
+use tokio_thrift_parser::{Ty, Namespace, Parser, Keyword};
 
 
 #[derive(Debug)]
 pub enum Error {
     Other,
     IO(io::Error),
-    Parser(thrust_parser::Error),
+    Parser(tokio_thrift_parser::Error),
     Eof,
 }
 
@@ -23,8 +23,8 @@ impl From<io::Error> for Error {
     }
 }
 
-impl From<thrust_parser::Error> for Error {
-    fn from(val: thrust_parser::Error) -> Error {
+impl From<tokio_thrift_parser::Error> for Error {
+    fn from(val: tokio_thrift_parser::Error) -> Error {
         Error::Parser(val)
     }
 }
@@ -91,7 +91,7 @@ fn helper_ty_expr(_: &Context,
 
 macro_rules! static_register {
     ($handlebar: expr, $name: expr, $file: expr) => {
-        $handlebar.register_template_string($name, include_str!($file).to_string()).expect("thrust internal error: failed to register template");
+        $handlebar.register_template_string($name, include_str!($file).to_string()).expect("tokio_thrift internal error: failed to register template");
     }
 }
 

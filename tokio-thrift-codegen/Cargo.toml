@@ -1,5 +1,5 @@
 [package]
-name = "thrust_codegen"
+name = "tokio-thrift-codegen"
 version = "0.1.0"
 authors = ["Daniel Fagnan <dnfagnan@gmail.com>"]
 
@@ -7,5 +7,5 @@ authors = ["Daniel Fagnan <dnfagnan@gmail.com>"]
 handlebars = "^0.22"
 rustc-serialize = "^0.3.15"
 
-[dependencies.thrust_parser]
-path = "../thrust-parser"
+[dependencies.tokio-thrift-parser]
+path = "../tokio-thrift-parser"
