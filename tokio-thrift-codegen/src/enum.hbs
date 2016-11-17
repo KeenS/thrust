@@ -11,7 +11,7 @@ impl Serialize for {{enum.ident}} {
     fn serialize<S>(&self, s: &mut S) -> Result<(), Error>
         where S: Serializer + ThriftSerializer
     {
-        try!(<&self as u32>.serialize(s));
+        try!(<&self as i32>::serialize(s));
         Ok(())
     }
 }

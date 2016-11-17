@@ -121,7 +121,7 @@ impl Ty {
         match self {
             &Ty::String => "String".to_string(),
             &Ty::Void => "()".to_string(),
-            &Ty::Byte => "i8".to_string(),
+            &Ty::Byte => "u8".to_string(),
             &Ty::Bool => "bool".to_string(),
             &Ty::Binary => "Vec<i8>".to_string(),
             &Ty::I16 => "i16".to_string(),

@@ -4,6 +4,8 @@ extern crate syntax;
 extern crate rustc;
 extern crate rustc_plugin;
 extern crate tokio_thrift_codegen;
+#[macro_use]
+extern crate log;
 
 use syntax::tokenstream::TokenTree;
 use syntax::ext::base::{self, ExtCtxt, MacResult, DummyResult, get_single_str_from_tts};
@@ -14,7 +16,8 @@ use syntax::util::small_vector::SmallVector;
 use rustc_plugin::Registry;
 use tokio_thrift_codegen::parser::Parser;
 use tokio_thrift_codegen::{compile, find_rust_namespace};
-use std::io::Write;
+use std::io::{Write, Read};
+use std::fs::File;
 
 macro_rules! panictry {
     ($e: expr) => {
@@ -27,15 +30,8 @@ macro_rules! panictry {
 }
 
 
-fn thrift_codegen<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[TokenTree])
+fn codegen<'cx>(cx: &'cx mut ExtCtxt, text: String, file: String)
         -> Box<MacResult + 'cx> {
-
-    let text = match get_single_str_from_tts(cx, sp, tts, "thrift!") {
-        Some(f) => f,
-        None => return DummyResult::expr(sp),
-    };
-
-
     let mut output = Vec::new();
     let mut tparser = Parser::new(&text);
     let ns = find_rust_namespace(&mut tparser).expect("cannot find namespace");
@@ -47,10 +43,10 @@ fn thrift_codegen<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[TokenTree])
         Err(_) => "",
     };
 
-    println!("{}", output);
+    trace!("{}", output);
 
 
-    let parser = new_parser_from_source_str(cx.parse_sess(), "thrift!".to_string(), output.to_string());
+    let parser = new_parser_from_source_str(cx.parse_sess(), file, output.to_string());
 
     struct ExpandResult<'a> {
         p: parse::parser::Parser<'a>,
@@ -73,10 +69,38 @@ fn thrift_codegen<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[TokenTree])
 
     Box::new(ExpandResult { p: parser })
 
+}
 
+fn macro_thrift_file<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[TokenTree])
+        -> Box<MacResult + 'cx> {
+
+    let file = match get_single_str_from_tts(cx, sp, tts, "thrift_file!") {
+        Some(f) => f,
+        None => return DummyResult::expr(sp),
+    };
+
+
+    let mut text = String::new();
+    File::open(&file).expect(&format!("thrift file not found: {}", &file))
+        .read_to_string(&mut text).expect(&format!("failed to read file: {}", &file));
+
+    codegen(cx, text, file)
+
+}
+
+fn macro_thrift<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[TokenTree])
+                     -> Box<MacResult + 'cx> {
+
+    let text = match get_single_str_from_tts(cx, sp, tts, "thrift!") {
+        Some(f) => f,
+        None => return DummyResult::expr(sp),
+    };
+
+    codegen(cx, text, "trift!".to_string())
 }
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
-    reg.register_macro("thrift", thrift_codegen);
+    reg.register_macro("thrift", macro_thrift);
+    reg.register_macro("thrift_file", macro_thrift_file);
 }

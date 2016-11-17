@@ -3,15 +3,69 @@ A fork project of [thehydroimpulse/thrust: Thrift RPC in Rust (Async I/O) http:/
 # Status
 UNDER DEVELOPMENT, NOT READY TO USE
 
+## Thrift Support
+### Types
+
+* [x] `bool`
+* [x] `byte`
+* [ ] `i8`
+* [x] `i16`
+* [x] `i32`
+* [x] `i64`
+* [ ] `double`
+* [x] `string`
+* [ ] `bynary`
+* [ ] `slist` (deprecated)
+* [ ] `list`
+* [ ] `set`
+* [ ] `map`
+
+### Constants
+
+* [ ] `int`
+* [ ] `double`
+* [ ] `literal`
+* [ ] `list`
+* [ ] `map`
+
+
+### Other Directives
+
+* [x] `namespace`
+* [ ] `include`
 * [ ] `const`
 * [x] `typedef`
-* [x] `struct` (`optional` is not supported yet)
-* [x] `enum` (`VARIANT = n` is not supported yet)
+* [x] `struct`
+  + [x] `required`
+  + [ ] `optional`
+* [x] `enum`
+  + [ ] `VARIANT = n`
 * [ ] `union`
 * [ ] `exception`
-* [x] `service` (`optional` is not supported yet)
+* [x] `service`
+  + [ ] `extends`
+  + [x] `function`
+    - [ ] `oneway`
+    - [x] `void`
+    - [ ] `throws`
+    - [x] `required`
+    - [ ] `optional`
 
-and at `service` , exception handling is not so matured that the server may hung when received corrupted data
+and at `service` , exception handling is not so matured that the server may hung when it received corrupted data.
+
+## Code Generation
+
+* [x] Command (`tokio-thrift` command)
+* [x] compiler plugin (`thrift!` macro)
+
+## Thrift Implementation
+
+* protocol
+  + [x] binary protocol
+* transport
+  + [x] tokio integrated async TCP transport (framed transport)
+
+Currently, framed transport supports only binary protocol.
 
 # Installing
 Notice again that this project is NOT READY TO USE.

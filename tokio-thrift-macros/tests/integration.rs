@@ -7,12 +7,6 @@ extern crate tokio_proto;
 extern crate tokio_service;
 extern crate tokio_thrift;
 
-// use tokio_thrift::binary_protocol::*;
-// use tokio_thrift::protocol::*;
-// use std::net::SocketAddr;
-// use std::io::{Cursor, Read, Write};
-// use futures::{Future, done};
-
 thrift!("
     namespace rust foobar1;
 
@@ -21,12 +15,6 @@ thrift!("
     }
 ");
 
-#[test]
-fn client() {
-    // let addr = "127.0.0.1:5656".parse().unwrap();
-    // let rpc = foobar1::FlockDbClient::new(addr);
-    // Reactor::run();
-}
 
 #[test]
 fn args_deserialize_gen() {

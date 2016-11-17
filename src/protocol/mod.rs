@@ -408,7 +408,7 @@ impl<'a> Serialize for &'a [u8] {
 mod tests {
     use super::*;
     use byteorder::{BigEndian, WriteBytesExt, ReadBytesExt};
-    use binary_protocol::BinaryProtocol;
+    use super::binary::BinaryProtocol;
     use std::io::{Write, Cursor};
 
     #[test]
