@@ -2,7 +2,7 @@ extern crate rustc_serialize;
 use rustc_serialize::{Decodable, Encodable, Decoder, Encoder};
 use std::char;
 use std::str::from_utf8;
-use nom::{alpha, digit};
+use nom::{alpha, digit, IResult, Err};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Ty {
@@ -11,6 +11,7 @@ pub enum Ty {
     Byte,
     Bool,
     Binary,
+    I8,
     I16,
     I32,
     I64,
@@ -56,23 +57,24 @@ impl Encodable for Ty {
                 &Byte => s.emit_enum_variant("byte", 2, 0, |_| Ok(())),
                 &Bool => s.emit_enum_variant("bool", 3, 0, |_| Ok(())),
                 &Binary => s.emit_enum_variant("binary", 4, 0, |_| Ok(())),
-                &I16 => s.emit_enum_variant("i16", 5, 0, |_| Ok(())),
-                &I32 => s.emit_enum_variant("i32", 6, 0, |_| Ok(())),
-                &I64 => s.emit_enum_variant("i64", 7, 0, |_| Ok(())),
+                &I8  => s.emit_enum_variant("i8", 5, 0, |_| Ok(())),
+                &I16 => s.emit_enum_variant("i16", 6, 0, |_| Ok(())),
+                &I32 => s.emit_enum_variant("i32", 7, 0, |_| Ok(())),
+                &I64 => s.emit_enum_variant("i64", 8, 0, |_| Ok(())),
                 &Double => s.emit_enum_variant("double", 8, 0, |_| Ok(())),
-                &List(ref ty) => s.emit_enum_variant("list", 9, 1, |s| {
+                &List(ref ty) => s.emit_enum_variant("list", 10, 1, |s| {
                     try!(s.emit_enum_variant_arg(0, |s| {
                         ty.encode(s)
                     }));
                     Ok(())
                 }),
-                &Set(ref ty) => s.emit_enum_variant("set", 10, 1, |s| {
+                &Set(ref ty) => s.emit_enum_variant("set", 11, 1, |s| {
                     try!(s.emit_enum_variant_arg(0, |s| {
                         ty.encode(s)
                     }));
                     Ok(())
                 }),
-                &Map(ref kty, ref vty) => s.emit_enum_variant("map", 11, 1, |s| {
+                &Map(ref kty, ref vty) => s.emit_enum_variant("map", 12, 1, |s| {
                     try!(s.emit_enum_variant_arg(0, |s| {
                         kty.encode(s)
                     }));
@@ -81,14 +83,14 @@ impl Encodable for Ty {
                     }));
                     Ok(())
                 }),
-                &Option(ref ty) => s.emit_enum_variant("option", 12, 1, |s| {
+                &Option(ref ty) => s.emit_enum_variant("option", 13, 1, |s| {
                     try!(s.emit_enum_variant_arg(0, |s| {
                         ty.encode(s)
                     }));
                     Ok(())
                 }),
                 // User-defined type.
-                &Ident(ref string) => s.emit_enum_variant("ident", 13, 1, |s| {
+                &Ident(ref string) => s.emit_enum_variant("ident", 14, 1, |s| {
                     try!(s.emit_enum_variant_arg(0, |s| {
                         s.emit_str(&string)
                     }));
@@ -126,6 +128,7 @@ impl Ty {
             &Ty::Byte => "u8".to_string(),
             &Ty::Bool => "bool".to_string(),
             &Ty::Binary => "Vec<i8>".to_string(),
+            &Ty::I8 => "i8".to_string(),
             &Ty::I16 => "i16".to_string(),
             &Ty::I32 => "i32".to_string(),
             &Ty::I64 => "i64".to_string(),
@@ -154,18 +157,42 @@ impl Ty {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Debug, RustcEncodable, RustcDecodable)]
+pub struct Document {
+    pub headers: Vec<Header>,
+    pub definitions: Vec<Definition>,
+}
+
+#[derive(Debug, RustcEncodable, RustcDecodable)]
+pub enum Header {
+    Include(Include),
+    Namespace(Namespace),
+}
+
+#[derive(Debug, RustcEncodable, RustcDecodable)]
+pub enum Definition {
+    Const(Const),
+    Typedef(Typedef),
+    Enum(Enum),
+    Struct(Struct),
+    Union(Union),
+    Exception(Exception),
+    Service(Service),
+}
+
+#[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct Include {
     pub path: String
 }
 
-#[derive(Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct Service {
+    pub extends: Option<String>,
     pub ident: String,
     pub methods: Vec<ServiceMethod>
 }
 
-#[derive(Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct ServiceMethod {
     pub oneway: bool,
     pub ident: String,
@@ -173,55 +200,59 @@ pub struct ServiceMethod {
     pub args: Vec<StructField>
 }
 
-#[derive(Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct Enum {
     pub ident: String,
-    pub variants: Vec<String>
+    pub variants: Vec<(String, Option<i64>)>
 }
 
-#[derive(Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct Union {
     pub ident: String,
     pub fields: Vec<StructField>
 }
 
 
-#[derive(Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct Struct {
     pub ident: String,
     pub fields: Vec<StructField>
 }
 
-#[derive(Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct Exception {
     pub ident: String,
     pub fields: Vec<StructField>
 }
 
-#[derive(Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct Throws {
     pub fields: Vec<StructField>
 }
 
-#[derive(Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct StructField {
-    pub seq: i16,
+    pub seq: Option<i64>,
     pub optional: bool,
     pub ty: Ty,
-    pub ident: String
+    pub ident: String,
+    pub value: Option<ConstValue>,
 }
 
-#[derive(Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
-pub struct Typedef(pub Ty, pub String);
+#[derive(Debug, RustcEncodable, RustcDecodable)]
+pub struct Typedef {
+    pub ty: Ty,
+    pub ident: String,
+}
 
-#[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct Const {
     pub ident: String,
     pub ty: Ty,
     pub value: ConstValue,
 }
 
-#[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Debug, RustcEncodable, RustcDecodable)]
 pub enum ConstValue {
     Int(i64),
     Double(f64),
@@ -233,112 +264,125 @@ pub enum ConstValue {
 }
 
 
-#[derive(Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct Namespace {
     pub lang: String,
     pub module: String
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
-pub enum Keyword {
-    Struct,
-    Service,
-    Enum,
-    Namespace,
-    Required,
-    Optional,
-    Oneway,
-    Typedef,
-    Throws,
-    Exception,
-    Include,
-    Const,
-}
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
-pub enum Token {
-    Eq,
-    Colon,
-    SingleQuote,
-    Dot,
-    Semi,
-    At,
-    Comma,
-    LCurly,
-    RCurly,
-    LAngle,
-    RAngle,
-    LParen,
-    RParen,
-    Number(i64),
-    QuotedString(String),
-    Ident(String),
-    Keyword(Keyword),
 
-    /// Useless comments.
-    Comment,
-    Whitespace,
-    Eof,
-    B,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub enum Error {
-    Expected,
-    MissingFieldAttribute,
-    ExpectedNumber,
-    ExpectedConstValue,
-    ExpectedString,
-    ExpectedKeyword(Keyword),
-    ExpectedIdent,
-    ExpectedToken(Token),
-    NoMoreItems
+pub fn parse(input: &str) -> Result<Option<Document>, Err<&[u8], u32>> {
+    match document(input.as_bytes()) {
+        IResult::Done(i, d) => {
+            println!("{}", from_utf8(i).unwrap());
+            Ok(Some(d))
+        },
+        IResult::Incomplete(_) => Ok(None),
+        IResult::Error(e) => Err(e),
+    }
 }
 
 
+named!(document <Document>, chain!(
+    headers: many0!(header) ~
+        defs: many0!(definition),
+    || Document {
+        headers: headers,
+        definitions: defs,
+    }));
 
-named!(document, chain!(
-    many0!(header) ~
-    many0!(definition), || ()));
+named!(header <Header>, alt!(
+    include    => {Header::Include} |
+    namespace  => {Header::Namespace}));
 
-named!(header, alt!(include | namespace));
-named!(include, chain!(tag!("include") ~ file: literal, || file));
-named!(namespace <Namespace>, chain!(tag!("namespace") ~ tag!("rust") ~ ns: identifire, || identifier));
-named!(definition, alt!(const_ | typedef | enum_ | struct_ | union | exception | service));
+named!(include <Include>, chain!(
+    tag!("include") ~ file: literal,
+    || Include{
+        path: file,
+    }));
+
+named!(namespace <Namespace>, chain!(
+    tag!("namespace") ~ lang: identifier ~ ns: identifier,
+    || Namespace{
+        lang: lang,
+        module: ns,
+    }));
+named!(definition <Definition>, alt!(
+    const_    => {Definition::Const}|
+    typedef   => {Definition::Typedef}|
+    enum_     => {Definition::Enum}|
+    struct_   => {Definition::Struct}|
+    union     => {Definition::Union}|
+    exception => {Definition::Exception}|
+    service   => {Definition::Service}));
+
 named!(const_ <Const>, chain!(
     tag!("const") ~ ty: field_type ~ id: identifier ~
         tag!("=") ~ value: const_value ~ opt!(list_separator),
-    || (ty, id, value)));
+    || Const {
+        ident: id,
+        ty: ty,
+        value: value,
+    }));
 
-named!(typedef <Typedef>, chain!(tag!("typedef") ~ ty: definition_type ~ id: identifier, || (ty, id)));
-named!(enum_ <Enum>, chain!(tag!("enum") ~ id: identifier ~ tag!("{") ~
-                     variants: many0!(chain!(
-                         variant: identifier ~
-                             index: chain!(tag!("=") ~ idx: int_constant, || idx)? ~
-                             list_separator,
-                         || (variant, index))) ~
-                     tag!("}"),
-                     || (id, variands)));
-named!(struct_ <Struct>, chain!(tag!("struct") ~ id: identifier ~  tag!("{") ~
-                       fields: many0!(field) ~
-                       tag!("}") ,
-                       || (id, fields)));
-named!(union <Union>, chain!(tag!("union")  ~ id: identifier ~  tag!("{") ~
-                     fields: many0!(field) ~
-                     tag!("}") ,
-                     || (id, fields)));
+named!(typedef <Typedef>, chain!(
+    tag!("typedef") ~ ty: definition_type ~ id: identifier,
+    || Typedef{
+        ty: ty,
+        ident: id,
+    }));
 
-named!(exception <Exception>, chain!(tag!("exception")  ~ id: identifier ~  tag!("{") ~
-                     fields: many0!(field) ~
-                     tag!("}") ,
-                     || (id, fields)));
+named!(enum_ <Enum>, chain!(
+    tag!("enum") ~ id: identifier ~ tag!("{") ~
+        variants: many0!(chain!(
+            variant: identifier ~
+                index: chain!(tag!("=") ~ idx: int_constant, || idx)? ~
+                list_separator,
+            || (variant, index))) ~
+        tag!("}"),
+    || Enum{
+        ident: id,
+        variants: variants,
+    }));
 
-named!(service <Service>, chain!(tag!("service")  ~ id: identifier ~
-                       ext: chain!(tag!("extends") ~ exid: identifier, || exid)? ~
-                       tag!("{") ~
-                       functions: many0!(function) ~
-                       tag!("}") ,
-                       || (id, ext, functions)));
+named!(struct_ <Struct>, chain!(
+    tag!("struct") ~ id: identifier ~  tag!("{") ~
+        fields: many0!(field) ~
+        tag!("}") ,
+    || Struct {
+        ident: id,
+        fields: fields,
+    }));
+named!(union <Union>, chain!(
+    tag!("union")  ~ id: identifier ~  tag!("{") ~
+        fields: many0!(field) ~
+        tag!("}") ,
+    || Union {
+        ident: id,
+        fields: fields,
+    }));
+
+named!(exception <Exception>, chain!(
+    tag!("exception")  ~ id: identifier ~  tag!("{") ~
+        fields: many0!(field) ~
+        tag!("}") ,
+    || Exception {
+        ident: id,
+        fields: fields,
+    }));
+
+named!(service <Service>, chain!(
+    tag!("service")  ~ id: identifier ~
+        ext: chain!(tag!("extends") ~ exid: identifier, || exid)? ~
+        tag!("{") ~
+        functions: many0!(function) ~
+        tag!("}") ,
+    || Service{
+        extends: ext,
+        ident: id,
+        methods: functions,
+    }));
 
 named!(field <StructField>, chain!(
     idx: field_id? ~
@@ -347,72 +391,137 @@ named!(field <StructField>, chain!(
         id: identifier ~
         value: chain!(tag!("=")? ~ v: const_value, || v)? ~
         list_separator?,
-    || (idx, req, ty, id, value)));
+    || StructField {
+        seq: idx,
+        optional: req.unwrap_or(false),
+        ty: ty,
+        ident: id,
+        value: value,
+    }));
 
-named!(field_id <i32>, chain!(id: int_constant ~ tag!(":"), || id));
-named!(field_req <bool>, alt!(tag!("required") | tag!("optional")));
+named!(field_id <i64>, chain!(id: int_constant ~ tag!(":"), || id));
+
+named!(field_req <bool>, alt!(
+    tag!("required") => {|_| false}|
+    tag!("optional") => {|_| true}));
+
 named!(function <ServiceMethod>, chain!(
-    tag!("oneway")? ~
+    oneway: tag!("oneway")? ~
         ty: function_type ~
         id: identifier ~
-        tag!("(") ~
-        args: many0!(field) ~
-        tag!(")") ~
+        tag!("(") ~ args: many0!(field) ~ tag!(")") ~
         throws? ~
         list_separator?,
-    || (ty, id, args)));
-named!(function_type <Ty>, alt!(field_type | tag!("void")));
-named!(throws <Throws>, chain!(tag!("throws") ~ fields: many0!(field), || fields));
-named!(field_type <Ty>, alt!(identifier | base_type | container_type));
-named!(definition_type <Ty>, alt!(base_type | container_type));
+    || ServiceMethod{
+        oneway: oneway.is_some(),
+        ident: id,
+        ty: ty,
+        args: args}));
+
+named!(function_type <Ty>, alt!(
+    field_type |
+    tag!("void") => {|_| Ty::Void}));
+
+named!(throws <Throws>, chain!(
+    tag!("throws") ~ fields: many0!(field),
+    || Throws{fields: fields}));
+
+named!(field_type <Ty>, alt!(
+    identifier => {|i| Ty::Ident(i)} |
+    base_type |
+    container_type));
+
+named!(definition_type <Ty>, alt!(
+    base_type |
+    container_type));
+
 named!(base_type <Ty>, alt!(
-    tag!("bool") | tag!("byte") | tag!("i8") | tag!("i16") |
-    tag!("i32") | tag!("i64") | tag!("double") | tag!("string") |
-    tag!("binary")));
+    tag!("bool")   => {|_| Ty::Bool} |
+    tag!("byte")   => {|_| Ty::Byte} |
+    tag!("i8")     => {|_| Ty::I8} |
+    tag!("i16")    => {|_| Ty::I16} |
+    tag!("i32")    => {|_| Ty::I32} |
+    tag!("i64")    => {|_| Ty::I64} |
+    tag!("double") => {|_| Ty::Double} |
+    tag!("string") => {|_| Ty::String} |
+    tag!("binary") => {|_| Ty::Binary}));
+
 named!(container_type <Ty>, alt!(map_type | set_type | list_type));
+
 named!(map_type <Ty>, chain!(
-    tag!("map") ~ tag!("<") ~
-        k: field_type ~ tag!(",") ~ v: field_type ~
-        tag!(">"),
-    || (k, v)));
-named!(list_type <Ty>, chain!(tag!("list") ~ tag!("<") ~ v: field_type ~ tag!(">"), || v));
-named!(const_value <ConstValue>, alt!(int_constant | double_constant | literal |
-                        identifier | const_list | const_map));
-named!(int_constant <i64>, chain!(sgn: alt!(tag!("+") | tag!("-"))? ~ n: digit, || (sgn, n)));
+    tag!("map") ~ tag!("<") ~ k: field_type ~ tag!(",") ~ v: field_type ~ tag!(">"),
+    || Ty::Map(Box::new(k), Box::new(v))));
+
+named!(set_type <Ty>, chain!(
+    tag!("set") ~ tag!("<") ~ v: field_type ~ tag!(">"),
+    || Ty::Set(Box::new(v))));
+
+named!(list_type <Ty>, chain!(
+    tag!("list") ~ tag!("<") ~ v: field_type ~ tag!(">"),
+    || Ty::List(Box::new(v))));
+
+named!(const_value <ConstValue>, alt!(
+    int_constant    => {ConstValue::Int} |
+    double_constant => {ConstValue::Double} |
+    literal         => {ConstValue::String} |
+    identifier      => {|_| panic!("not supported identifier")} |
+    const_list |
+    const_map));
+
+named!(int_constant <i64>, chain!
+       (sgn: sgn? ~ n: map_res!(digit, from_utf8),
+        || sgn.unwrap_or(1) * n.parse::<i64>().unwrap()));
+
 named!(double_constant <f64>, chain!(
-    sgn: alt!(tag!("+") | tag!("-"))? ~
-        n: digit ~
+    sgn: sgn? ~
+        n: map!(digit, |d| from_utf8(d).expect("invalid utf8").parse::<i64>().unwrap()) ~
         frac: chain!(tag!(".") ~ f: digit, || f)? ~
         pow: chain!(alt!(tag!("E") | tag!("e")) ~ p: int_constant, || p) ?
-    , || (sgn, n, frac, pow)));
+    , || {
+        let sgn = sgn.unwrap_or(1) as f64;
+        let n = n as f64;
+        let frac: Option<f64> = frac.map(|f| from_utf8(f).unwrap().parse().unwrap());
+        let frac = frac.map(|f| f / f.log10()).unwrap_or(0.0);
+        let pow  = pow.unwrap_or(1);
+        let ret: f64 = ((sgn * (n + frac)) as f64).powi(pow as i32);
+        ret
+        }));
+
+named!(sgn <i64>, alt!(
+    tag!("+") => {|_| 1} |
+    tag!("-") => {|_| -1}));
+
 named!(const_list <ConstValue>, chain!(
     tag!("[") ~
         vs: many0!(chain!(v: const_value ~ list_separator?, || v)) ~
         tag!("]"),
-    || vs));
+    || ConstValue::List));
+
 named!(const_map <ConstValue>, chain!(
     tag!("{") ~
-        vs: many0!(chain!(k: const_value ~ v: const_value ~ list_separator?, || v)) ~
+        vs: many0!(chain!(k: const_value ~ tag!(":") ~ v: const_value ~ list_separator?, || v)) ~
         tag!("}"),
-    || vs));
-named!(literal <String>, alt!(chain!(
-    tag!("\"") ~
-        s: not!(char!('\"'))~
-        tag!("\""),
-    || s) |
-                     chain!(
-                         tag!("'") ~
-                             s: not!(char!('\''))~
-                             tag!("'"),
-                         || s)));
+    || ConstValue::Map));
+
+named!(literal <String>, map_res!(alt!(
+    chain!(tag!("\"") ~ s: is_not!("\"") ~ tag!("\""), || s) |
+    chain!(tag!("'")  ~ s: is_not!("'")  ~ tag!("'") , || s)),
+                                  |s| from_utf8(s).map(|s| s.to_string())));
+
 named!(identifier <String>, chain!(
     h: map_res!(alt!(alpha | tag!("_")), from_utf8) ~
-        t: map!(many0!(alt!(alpha | digit | tag!(".") | tag!("_"))), |vs| {
-            let mut s = String::new();
-            for v in vs {
-                s + &from_utf8(v).expect("invalid utf8");
-            };
-            s
-        }
-        ), || format!("{}{}", h, t)));
+        t: map!(many0!(
+            map_res!(alt!(
+                alpha | digit |
+                tag!(".") | tag!("_")),
+                     from_utf8)),
+                |vs| {
+                    let mut s = String::new();
+                    for v in vs {
+                        s += v
+                    };
+                    s
+                }),
+    || format!("{}{}", h, t)));
+
 named!(list_separator, alt!(tag!(",") | tag!(";")));

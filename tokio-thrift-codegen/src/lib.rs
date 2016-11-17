@@ -9,14 +9,13 @@ use std::collections::BTreeMap;
 use rustc_serialize::Decodable;
 use rustc_serialize::json::{self, Json};
 use handlebars::{Handlebars, RenderError, RenderContext, Helper, Context, JsonRender};
-use parser::{Ty, Namespace, Parser, Keyword, ConstValue};
+use parser::*;
 
 
 #[derive(Debug)]
 pub enum Error {
-    Other,
+    NotSupported(String),
     IO(io::Error),
-    Parser(parser::Error),
     Generate(handlebars::RenderError),
     Eof,
 }
@@ -27,28 +26,21 @@ impl From<io::Error> for Error {
     }
 }
 
-impl From<parser::Error> for Error {
-    fn from(val: parser::Error) -> Error {
-        Error::Parser(val)
-    }
-}
-
 impl From<handlebars::RenderError> for Error {
     fn from(val: handlebars::RenderError) -> Error {
         Error::Generate(val)
     }
 }
 
-pub fn find_rust_namespace(parser: &mut Parser) -> Result<Namespace, Error> {
-    loop {
-        let ns = parser.parse_namespace()?;
-
-        if &*ns.lang == "rust" {
-            return Ok(ns);
-        } else {
-            continue;
-        }
+pub fn find_rust_namespace(doc: &Document) -> Option<&Namespace> {
+    doc.headers.iter().find(|h| match *h {
+        &Header::Include(_) => false,
+        &Header::Namespace(ref n) => n.lang == "rust",
     }
+    ).map(|h| match h {
+        &Header::Include(_) => panic!("internal error"),
+        &Header::Namespace(ref n) => n,
+    })
 }
 
 // define a custom helper
@@ -137,7 +129,7 @@ macro_rules! static_register_files {
 }
 
 
-pub fn compile(mut parser: &mut Parser, wr: &mut Write) -> Result<(), Error> {
+pub fn compile(doc: &Document, wr: &mut Write) -> Result<(), Error> {
     let mut handlebars = Handlebars::new();
     static_register_files!(handlebars, "base", "service", "service_client", "service_server", "struct", "enum", "typedef", "const", "method");
 
@@ -148,36 +140,34 @@ pub fn compile(mut parser: &mut Parser, wr: &mut Write) -> Result<(), Error> {
 
 
     let mut data: BTreeMap<String, Json> = BTreeMap::new();
-    let namespace = find_rust_namespace(&mut parser).map(|n| n.module).unwrap_or("self".to_string());
-    data.insert("namespace".to_string(), Json::String(namespace));
+    let namespace = find_rust_namespace(doc).map(|n| &n.module[..]).unwrap_or("self");
+    data.insert("namespace".to_string(), Json::String(namespace.to_string()));
 
+    // process doc.header includes
+
+    // TODO: change contenh according to the thrift document.
+    //       if it doesn't define any services, crates liske `futures` is not needed
     write!(wr,
            "{}",
            handlebars.render("base", &data).expect("faled to render base file"))?;
 
-    loop {
-
-        if parser.lookahead_keyword(Keyword::Enum) {
-            gen_enum(&mut parser, &mut data, wr, &mut handlebars)?
-        } else if parser.lookahead_keyword(Keyword::Struct) {
-            gen_struct(&mut parser, &mut data, wr, &mut handlebars)?
-        } else if parser.lookahead_keyword(Keyword::Typedef) {
-            gen_typedef(&mut parser, &mut data, wr, &mut handlebars)?
-        } else if parser.lookahead_keyword(Keyword::Const) {
-            gen_const(&mut parser, &mut data, wr, &mut handlebars)?
-        } else if parser.lookahead_keyword(Keyword::Service) {
-            gen_service(&mut parser, &mut data, wr, &mut handlebars)?
-        } else {
-            break;
+    for def in doc.definitions.iter() {
+        use parser::Definition::*;
+        match def {
+            &Const(ref c)     => gen_const  (c, &mut data, wr, &mut handlebars)?,
+            &Typedef(ref t)   => gen_typedef(t, &mut data, wr, &mut handlebars)?,
+            &Enum(ref e)      => gen_enum   (e, &mut data, wr, &mut handlebars)?,
+            &Struct(ref s)    => gen_struct (s, &mut data, wr, &mut handlebars)?,
+            &Union(ref u)     => return Err(Error::NotSupported("union is not supported yet".to_string())),
+            &Exception(ref e) => return Err(Error::NotSupported("exception is not supported yet".to_string())),
+            &Service(ref s)   => gen_service(s, &mut data, wr, &mut handlebars)?,
         }
     }
-
     Ok(())
 }
 
-fn gen_enum(parser: &mut Parser, data: &mut BTreeMap<String, Json>, wr: &mut Write, handlebars: &mut Handlebars) -> Result<(), Error> {
-    let enum_ = parser.parse_enum()?;
-    let json = json::encode(&enum_)
+fn gen_enum(enum_: &Enum, data: &mut BTreeMap<String, Json>, wr: &mut Write, handlebars: &mut Handlebars) -> Result<(), Error> {
+    let json = json::encode(enum_)
         .ok()
         .and_then(|s| Json::from_str(&s).ok())
         .expect("internal error");
@@ -187,9 +177,8 @@ fn gen_enum(parser: &mut Parser, data: &mut BTreeMap<String, Json>, wr: &mut Wri
 }
 
 
-fn gen_struct(parser: &mut Parser, data: &mut BTreeMap<String, Json>, wr: &mut Write, handlebars: &mut Handlebars) -> Result<(), Error> {
-    let struct_ = parser.parse_struct()?;
-    let json = json::encode(&struct_)
+fn gen_struct(struct_: &Struct, data: &mut BTreeMap<String, Json>, wr: &mut Write, handlebars: &mut Handlebars) -> Result<(), Error> {
+    let json = json::encode(struct_)
         .ok()
         .and_then(|s| Json::from_str(&s).ok())
         .expect("internal error");
@@ -199,9 +188,8 @@ fn gen_struct(parser: &mut Parser, data: &mut BTreeMap<String, Json>, wr: &mut W
     Ok(())
 }
 
-fn gen_typedef(parser: &mut Parser, data: &mut BTreeMap<String, Json>, wr: &mut Write, handlebars: &mut Handlebars) -> Result<(), Error> {
-    let typedef = parser.parse_typedef()?;
-    let json = json::encode(&typedef)
+fn gen_typedef(typedef: &Typedef, data: &mut BTreeMap<String, Json>, wr: &mut Write, handlebars: &mut Handlebars) -> Result<(), Error> {
+    let json = json::encode(typedef)
         .ok()
         .and_then(|s| Json::from_str(&s).ok())
         .expect("internal error");
@@ -212,9 +200,8 @@ fn gen_typedef(parser: &mut Parser, data: &mut BTreeMap<String, Json>, wr: &mut 
 }
 
 
-fn gen_const(parser: &mut Parser, data: &mut BTreeMap<String, Json>, wr: &mut Write, handlebars: &mut Handlebars) -> Result<(), Error> {
-    let const_ = parser.parse_const()?;
-    let json = json::encode(&const_)
+fn gen_const(const_: &Const, data: &mut BTreeMap<String, Json>, wr: &mut Write, handlebars: &mut Handlebars) -> Result<(), Error> {
+    let json = json::encode(const_)
         .ok()
         .and_then(|s| Json::from_str(&s).ok())
         .expect("internal error");
@@ -225,9 +212,8 @@ fn gen_const(parser: &mut Parser, data: &mut BTreeMap<String, Json>, wr: &mut Wr
 }
 
 
-fn gen_service(parser: &mut Parser, data: &mut BTreeMap<String, Json>, wr: &mut Write, handlebars: &mut Handlebars) -> Result<(), Error> {
-    let service = parser.parse_service()?;
-    let json = json::encode(&service)
+fn gen_service(service: &Service, data: &mut BTreeMap<String, Json>, wr: &mut Write, handlebars: &mut Handlebars) -> Result<(), Error> {
+    let json = json::encode(service)
         .ok()
         .and_then(|s| Json::from_str(&s).ok())
         .expect("internal error");
