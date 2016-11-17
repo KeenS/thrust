@@ -88,6 +88,11 @@ impl <T: WriteTransport> Serializer for BinaryProtocol<T> {
         Ok(())
     }
 
+    fn serialize_f64(&mut self, val: f64) -> Result<(), Error> {
+        try!(self.inner.write_f64::<BigEndian>(val));
+        Ok(())
+    }
+
     fn serialize_bytes(&mut self, val: &[u8]) -> Result<(), Error> {
         try!(self.serialize_i32(val.len() as i32));
         try!(self.inner.write(val));
@@ -189,6 +194,11 @@ impl<T: ReadTransport> Deserializer for BinaryProtocol<T> {
         Ok(try!(self.inner.read_i8()))
     }
 
+    fn deserialize_f64(&mut self) -> Result<f64, Error> {
+        Ok(try!(self.inner.read_f64::<BigEndian>()))
+    }
+
+
     fn deserialize_bytes(&mut self) -> Result<Vec<u8>, Error> {
         let len = try!(self.deserialize_i32()) as usize;
         let mut buf = Vec::with_capacity(len);
@@ -261,12 +271,95 @@ impl<T: ReadTransport> ThriftDeserializer for BinaryProtocol<T> {
 
 #[cfg(test)]
 mod tests {
-    use std::io::{Cursor, Read};
-    use byteorder::{ReadBytesExt, BigEndian};
+    use std::io::{Cursor, Read, Write};
+    use byteorder::{ReadBytesExt, WriteBytesExt, BigEndian};
     use protocol::{ThriftMessageType, ThriftType, ThriftMessage, ThriftDeserializer, ThriftSerializer, Serializer, Serialize, Deserializer};
     use super::*;
+    use ::Deserialize;
+
 
     #[test]
+    fn deserialize_bool() {
+        let mut de = BinaryProtocol::new(Cursor::new(vec![1u8]));
+        let val: bool = Deserialize::deserialize(&mut de).unwrap();
+        assert_eq!(val, true);
+    }
+
+    #[test]
+    fn deserialize_u16() {
+        let mut buf = Vec::new();
+        buf.write_u16::<BigEndian>(32000);
+        let mut de = BinaryProtocol::new(Cursor::new(buf));
+        let val: u16 = Deserialize::deserialize(&mut de).unwrap();
+        assert_eq!(val, 32000);
+    }
+
+    #[test]
+    fn deserialize_i16() {
+        let mut buf = Vec::new();
+        buf.write_i16::<BigEndian>(-32000);
+        let mut de = BinaryProtocol::new(Cursor::new(buf));
+        let val: i16 = Deserialize::deserialize(&mut de).unwrap();
+        assert_eq!(val, -32000);
+    }
+
+    #[test]
+    fn deserialize_u32() {
+        let mut buf = Vec::new();
+        buf.write_u32::<BigEndian>(32000);
+        let mut de = BinaryProtocol::new(Cursor::new(buf));
+        let val: u32 = Deserialize::deserialize(&mut de).unwrap();
+        assert_eq!(val, 32000);
+    }
+
+    #[test]
+    fn deserialize_i32() {
+        let mut buf = Vec::new();
+        buf.write_i32::<BigEndian>(32000);
+        let mut de = BinaryProtocol::new(Cursor::new(buf));
+        let val: i32 = Deserialize::deserialize(&mut de).unwrap();
+        assert_eq!(val, 32000);
+    }
+
+    #[test]
+    fn deserialize_u64() {
+        let mut buf = Vec::new();
+        buf.write_u64::<BigEndian>(32000);
+        let mut de = BinaryProtocol::new(Cursor::new(buf));
+        let val: u64 = Deserialize::deserialize(&mut de).unwrap();
+        assert_eq!(val, 32000);
+    }
+
+    #[test]
+    fn deserialize_i64() {
+        let mut buf = Vec::new();
+        buf.write_i64::<BigEndian>(32000);
+        let mut de = BinaryProtocol::new(Cursor::new(buf));
+        let val: i64 = Deserialize::deserialize(&mut de).unwrap();
+        assert_eq!(val, 32000);
+    }
+
+    #[test]
+    fn deserialize_f64() {
+        let mut buf = Vec::new();
+        buf.write_f64::<BigEndian>(32000.0);
+        let mut de = BinaryProtocol::new(Cursor::new(buf));
+        let val: f64 = Deserialize::deserialize(&mut de).unwrap();
+        assert_eq!(val, 32000.0);
+    }
+
+    #[test]
+    fn deserialize_string() {
+        let mut buf = Vec::new();
+        let i = "foobar";
+        buf.write_i32::<BigEndian>(i.len() as i32);
+        buf.write(i.as_bytes());
+        let mut de = BinaryProtocol::new(Cursor::new(buf));
+        let val: String = Deserialize::deserialize(&mut de).unwrap();
+        assert_eq!(&*val, "foobar");
+    }
+
+   #[test]
     fn serialize_bool_true() {
         let mut v: Vec<u8> = Vec::new();
         {

@@ -12,7 +12,7 @@ UNDER DEVELOPMENT, NOT READY TO USE
 * [x] `i16`
 * [x] `i32`
 * [x] `i64`
-* [ ] `double`
+* [x] `double`
 * [x] `string`
 * [ ] `bynary`
 * [ ] `slist` (deprecated)

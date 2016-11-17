@@ -107,6 +107,7 @@ pub trait Serializer {
     fn serialize_u16(&mut self, val: u16) -> Result<(), Error>;
     fn serialize_u8(&mut self, val: u8) -> Result<(), Error>;
     fn serialize_i8(&mut self, val: i8) -> Result<(), Error>;
+    fn serialize_f64(&mut self, val: f64) -> Result<(), Error>;
     fn serialize_bytes(&mut self, val: &[u8]) -> Result<(), Error>;
 }
 
@@ -122,6 +123,7 @@ pub trait Deserializer {
     fn deserialize_i16(&mut self) -> Result<i16, Error>;
     fn deserialize_u8(&mut self) -> Result<u8, Error>;
     fn deserialize_i8(&mut self) -> Result<i8, Error>;
+    fn deserialize_f64(&mut self) -> Result<f64, Error>;
     fn deserialize_bytes(&mut self) -> Result<Vec<u8>, Error>;
     fn deserialize_str(&mut self) -> Result<String, Error>;
 }
@@ -276,6 +278,14 @@ impl Deserialize for i64 {
     }
 }
 
+impl Deserialize for f64 {
+    fn deserialize<D>(de: &mut D) -> Result<Self, Error>
+        where D: Deserializer + ThriftDeserializer
+    {
+        de.deserialize_f64()
+    }
+}
+
 impl Deserialize for String {
     fn deserialize<D>(de: &mut D) -> Result<Self, Error>
         where D: Deserializer + ThriftDeserializer
@@ -396,90 +406,18 @@ impl Serialize for u8 {
     }
 }
 
+impl Serialize for f64 {
+    fn serialize<S>(&self, s: &mut S) -> Result<(), Error>
+        where S: Serializer + ThriftSerializer
+    {
+        s.serialize_f64(*self)
+    }
+}
+
 impl<'a> Serialize for &'a [u8] {
     fn serialize<S>(&self, s: &mut S) -> Result<(), Error>
         where S: Serializer + ThriftSerializer
     {
         s.serialize_bytes(self)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use byteorder::{BigEndian, WriteBytesExt, ReadBytesExt};
-    use super::binary::BinaryProtocol;
-    use std::io::{Write, Cursor};
-
-    #[test]
-    fn deserialize_bool() {
-        let mut de = BinaryProtocol::new(Cursor::new(vec![1u8]));
-        let val: bool = Deserialize::deserialize(&mut de).unwrap();
-        assert_eq!(val, true);
-    }
-
-    #[test]
-    fn deserialize_u16() {
-        let mut buf = Vec::new();
-        buf.write_u16::<BigEndian>(32000);
-        let mut de = BinaryProtocol::new(Cursor::new(buf));
-        let val: u16 = Deserialize::deserialize(&mut de).unwrap();
-        assert_eq!(val, 32000);
-    }
-
-    #[test]
-    fn deserialize_i16() {
-        let mut buf = Vec::new();
-        buf.write_i16::<BigEndian>(-32000);
-        let mut de = BinaryProtocol::new(Cursor::new(buf));
-        let val: i16 = Deserialize::deserialize(&mut de).unwrap();
-        assert_eq!(val, -32000);
-    }
-
-    #[test]
-    fn deserialize_u32() {
-        let mut buf = Vec::new();
-        buf.write_u32::<BigEndian>(32000);
-        let mut de = BinaryProtocol::new(Cursor::new(buf));
-        let val: u32 = Deserialize::deserialize(&mut de).unwrap();
-        assert_eq!(val, 32000);
-    }
-
-    #[test]
-    fn deserialize_i32() {
-        let mut buf = Vec::new();
-        buf.write_i32::<BigEndian>(32000);
-        let mut de = BinaryProtocol::new(Cursor::new(buf));
-        let val: i32 = Deserialize::deserialize(&mut de).unwrap();
-        assert_eq!(val, 32000);
-    }
-
-    #[test]
-    fn deserialize_u64() {
-        let mut buf = Vec::new();
-        buf.write_u64::<BigEndian>(32000);
-        let mut de = BinaryProtocol::new(Cursor::new(buf));
-        let val: u64 = Deserialize::deserialize(&mut de).unwrap();
-        assert_eq!(val, 32000);
-    }
-
-    #[test]
-    fn deserialize_i64() {
-        let mut buf = Vec::new();
-        buf.write_i64::<BigEndian>(32000);
-        let mut de = BinaryProtocol::new(Cursor::new(buf));
-        let val: i64 = Deserialize::deserialize(&mut de).unwrap();
-        assert_eq!(val, 32000);
-    }
-
-    #[test]
-    fn deserialize_string() {
-        let mut buf = Vec::new();
-        let i = "foobar";
-        buf.write_i32::<BigEndian>(i.len() as i32);
-        buf.write(i.as_bytes());
-        let mut de = BinaryProtocol::new(Cursor::new(buf));
-        let val: String = Deserialize::deserialize(&mut de).unwrap();
-        assert_eq!(&*val, "foobar");
     }
 }
