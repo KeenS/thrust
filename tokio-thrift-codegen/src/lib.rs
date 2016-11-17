@@ -86,7 +86,7 @@ fn helper_ty_expr(_: &Context,
     let ty = Ty::from(rendered);
     let expr = match ty {
         Ty::String => "de.deserialize_str()".to_string(),
-        Ty::Byte => "de.deserialize_byte()".to_string(),
+        Ty::Byte => "de.deserialize_u8()".to_string(),
         Ty::I16 => "de.deserialize_i16()".to_string(),
         Ty::I32 => "de.deserialize_i32()".to_string(),
         Ty::I64 => "de.deserialize_i64()".to_string(),
