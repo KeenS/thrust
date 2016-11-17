@@ -21,7 +21,7 @@ UNDER DEVELOPMENT, NOT READY TO USE
 
 ### Constants
 
-* [ ] `int`
+* [x] `int`
 * [ ] `double`
 * [x] `literal`
 * [ ] `list`

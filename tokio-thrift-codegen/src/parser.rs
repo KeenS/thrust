@@ -308,7 +308,7 @@ impl<'a> Parser<'a> {
 
             fields.push(self.parse_struct_field()?);
 
-            if self.eat(&Token::Semi) {
+            if self.eat_separator() {
                 continue;
             } else {
                 break;
@@ -489,7 +489,7 @@ impl<'a> Parser<'a> {
                 args: method_fields
             });
 
-            if self.eat(&Token::Comma) || self.eat(&Token::Semi) {
+            if self.eat_separator() {
                 continue;
             } else {
                 self.eat(&Token::RCurly);
@@ -627,12 +627,13 @@ impl<'a> Parser<'a> {
         self.pos >= self.buffer.len()
     }
 
-    fn consume_char(&mut self) -> char {
+    fn consume_char(&mut self) -> Option<char> {
         let mut iter = self.buffer[self.pos..].char_indices();
-        let (_, cur_char) = iter.next().unwrap();
-        let (next_pos, _) = iter.next().unwrap_or((1, ' '));
-        self.pos += next_pos;
-        return cur_char;
+        iter.next().map(|(_, cur_char)| {
+            let (next_pos, _) = iter.next().unwrap_or((1, ' '));
+            self.pos += next_pos;
+            cur_char
+        })
     }
 
     fn next_token(&mut self) -> Token {
@@ -640,7 +641,10 @@ impl<'a> Parser<'a> {
             return Token::Eof;
         }
 
-        let ch = self.consume_char();
+        let ch = match self.consume_char() {
+            Some(ch) => ch,
+            None => return Token::Eof,
+        };
 
         match ch {
             ':' => Token::Colon,
@@ -649,7 +653,10 @@ impl<'a> Parser<'a> {
             ',' => Token::Comma,
             '"' => {
                 let val = self.consume_while(|c| c != '"' || c != '\"');
-                self.consume_char();
+                match self.consume_char() {
+                    Some(_) => (),
+                    None => return Token::Eof,
+                }
                 Token::QuotedString(val)
             },
             '=' => Token::Eq,
@@ -659,6 +666,15 @@ impl<'a> Parser<'a> {
             '}' => Token::RCurly,
             '<' => Token::LAngle,
             '>' => Token::RAngle,
+            '-' => {
+                let mut val = self.consume_while(|c| match c {
+                    '0'...'9' => true,
+                    _ => false
+                });
+                val = format!("-{}", val);
+                Token::Number(val.parse().unwrap())
+
+            }
             '0'...'9' => {
                 let mut val = self.consume_while(|c| match c {
                     '0'...'9' => true,
@@ -674,10 +690,17 @@ impl<'a> Parser<'a> {
                     self.consume_while(|c| c != '\n' && c != '\r');
                     return Token::Comment
                 } else if self.next_char() == '*' {
-                    self.consume_char();
+                    match self.consume_char() {
+                        Some(_) => (),
+                        None => return Token::Eof,
+                    }
                     loop {
                         self.consume_while(|c| c != '*');
-                        self.consume_char();
+                        match self.consume_char() {
+                            Some(_) => (),
+                            None => return Token::Eof,
+                        }
+
 
                         if self.next_char() == '/' {
                             break;
@@ -685,7 +708,11 @@ impl<'a> Parser<'a> {
                     }
 
                     // Consume the following '/' because we just did a lookahead previously.
-                    self.consume_char();
+                    match self.consume_char() {
+                        Some(_) => (),
+                        None => return Token::Eof,
+                    }
+
                     return Token::Comment
                 }
 
@@ -723,8 +750,12 @@ impl<'a> Parser<'a> {
                     _ => Token::Ident(ident)
                 }
             },
-            _ => Token::Eof
+            ch => panic!("unexpected char: {} at {}", ch, self.pos),
         }
+    }
+
+    pub fn eat_separator(&mut self) -> bool {
+        self.eat(&Token::Semi) || self.eat(&Token::Comma)
     }
 
     pub fn eat(&mut self, token: &Token) -> bool {
@@ -744,7 +775,10 @@ impl<'a> Parser<'a> {
         where F: Fn(char) -> bool {
         let mut result = String::new();
         while !self.eof() && test(self.next_char()) {
-            result.push(self.consume_char());
+            match self.consume_char() {
+                Some(c) => result.push(c),
+                None => break,
+            }
         }
         return result;
     }
