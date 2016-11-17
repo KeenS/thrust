@@ -15,7 +15,6 @@ UNDER DEVELOPMENT, NOT READY TO USE
 * [x] `double`
 * [x] `string`
 * [x] `bynary`
-* [ ] `slist` (deprecated)
 * [ ] `list`
 * [ ] `set`
 * [ ] `map`
@@ -56,7 +55,7 @@ and at `service` , exception handling is not so matured that the server may hung
 ## Code Generation
 
 * [x] Command (`tokio-thrift` command)
-* [x] compiler plugin (`thrift!` macro)
+* [x] compiler plugin (`thrift!` , `thrift_file!` macro)
 
 ## Thrift Implementation
 
