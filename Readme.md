@@ -14,7 +14,7 @@ UNDER DEVELOPMENT, NOT READY TO USE
 * [x] `i64`
 * [x] `double`
 * [x] `string`
-* [ ] `bynary`
+* [x] `bynary`
 * [ ] `slist` (deprecated)
 * [ ] `list`
 * [ ] `set`

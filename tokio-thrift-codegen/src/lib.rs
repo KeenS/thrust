@@ -114,6 +114,7 @@ fn helper_ty_expr(_: &Context,
         Ty::I64 => "de.deserialize_i64()".to_string(),
         Ty::Bool => "de.deserialize_bool()".to_string(),
         Ty::Double => "de.deserialize_f64()".to_string(),
+        Ty::Binary => "de.deserialize_bytes()".to_string() ,
         Ty::Ident(s) => format!("{}::deserialize(de)", s) ,
         _ => panic!("Unexpected type to deserialize_arg: {:?}.", ty),
     };
