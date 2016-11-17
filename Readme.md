@@ -88,7 +88,7 @@ and write this at your Cargo.toml
 
 ```toml
 [dependencies]
-tokio-thrift = {git = "path/to/tokio-thrift"}
+tokio-thrift = {path = "path/to/tokio-thrift"}
 ```
 
 # More
