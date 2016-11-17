@@ -4,6 +4,7 @@ extern crate rustc_serialize;
 pub mod parser;
 use std::io::{self, Write};
 use std::collections::BTreeMap;
+use rustc_serialize::Decodable;
 use rustc_serialize::json::{self, Json};
 use handlebars::{Handlebars, RenderError, RenderContext, Helper, Context, JsonRender};
 use parser::{Ty, Namespace, Parser, Keyword, ConstValue};
@@ -76,6 +77,27 @@ fn helper_ty_to_rust(_: &Context,
     Ok(())
 }
 
+fn helper_const_to_literal(_: &Context,
+                     h: &Helper,
+                     _: &Handlebars,
+                     rc: &mut RenderContext)
+                     -> Result<(), RenderError> {
+    use parser::ConstValue::*;
+    let param = h.param(0).ok_or(RenderError::new("Param 0 is required for to_rust helper."))?;
+    let mut decoder = json::Decoder::new(param.value().clone());
+    let v = ConstValue::decode(&mut decoder).expect("internal error: failed to decode json value");
+    let ret = match v {
+        Int(i) => i.to_string(),
+        Double(d) => d.to_string(),
+        String(s) => format!("{:?}", s),
+        ty @ List | ty @ Map => panic!("not supported type {:?}", ty),
+    };
+    rc.writer.write(ret.as_bytes())?;
+    Ok(())
+}
+
+
+
 fn helper_ty_expr(_: &Context,
                   h: &Helper,
                   _: &Handlebars,
@@ -119,6 +141,7 @@ pub fn compile(mut parser: &mut Parser, wr: &mut Write) -> Result<(), Error> {
     handlebars.register_helper("expr", Box::new(helper_ty_expr));
     handlebars.register_helper("to_protocol", Box::new(helper_ty_to_protocol));
     handlebars.register_helper("to_rust", Box::new(helper_ty_to_rust));
+    handlebars.register_helper("to_literal", Box::new(helper_const_to_literal));
 
 
     let mut data: BTreeMap<String, Json> = BTreeMap::new();
