@@ -2,7 +2,7 @@ extern crate rustc_serialize;
 use rustc_serialize::{Decodable, Encodable, Decoder, Encoder};
 use std::char;
 use std::str::from_utf8;
-use nom::{alpha, digit, IResult, Err};
+use nom::{alpha, digit, multispace, IResult, Err};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Ty {
@@ -157,19 +157,19 @@ impl Ty {
     }
 }
 
-#[derive(Debug, RustcEncodable, RustcDecodable)]
+#[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Document {
     pub headers: Vec<Header>,
     pub definitions: Vec<Definition>,
 }
 
-#[derive(Debug, RustcEncodable, RustcDecodable)]
+#[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum Header {
     Include(Include),
     Namespace(Namespace),
 }
 
-#[derive(Debug, RustcEncodable, RustcDecodable)]
+#[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum Definition {
     Const(Const),
     Typedef(Typedef),
@@ -180,19 +180,19 @@ pub enum Definition {
     Service(Service),
 }
 
-#[derive(Debug, RustcEncodable, RustcDecodable)]
+#[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Include {
     pub path: String
 }
 
-#[derive(Debug, RustcEncodable, RustcDecodable)]
+#[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Service {
     pub extends: Option<String>,
     pub ident: String,
     pub methods: Vec<ServiceMethod>
 }
 
-#[derive(Debug, RustcEncodable, RustcDecodable)]
+#[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct ServiceMethod {
     pub oneway: bool,
     pub ident: String,
@@ -200,37 +200,37 @@ pub struct ServiceMethod {
     pub args: Vec<StructField>
 }
 
-#[derive(Debug, RustcEncodable, RustcDecodable)]
+#[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Enum {
     pub ident: String,
     pub variants: Vec<(String, Option<i64>)>
 }
 
-#[derive(Debug, RustcEncodable, RustcDecodable)]
+#[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Union {
     pub ident: String,
     pub fields: Vec<StructField>
 }
 
 
-#[derive(Debug, RustcEncodable, RustcDecodable)]
+#[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Struct {
     pub ident: String,
     pub fields: Vec<StructField>
 }
 
-#[derive(Debug, RustcEncodable, RustcDecodable)]
+#[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Exception {
     pub ident: String,
     pub fields: Vec<StructField>
 }
 
-#[derive(Debug, RustcEncodable, RustcDecodable)]
+#[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Throws {
     pub fields: Vec<StructField>
 }
 
-#[derive(Debug, RustcEncodable, RustcDecodable)]
+#[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct StructField {
     pub seq: Option<i64>,
     pub optional: bool,
@@ -239,20 +239,20 @@ pub struct StructField {
     pub value: Option<ConstValue>,
 }
 
-#[derive(Debug, RustcEncodable, RustcDecodable)]
+#[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Typedef {
     pub ty: Ty,
     pub ident: String,
 }
 
-#[derive(Debug, RustcEncodable, RustcDecodable)]
+#[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Const {
     pub ident: String,
     pub ty: Ty,
     pub value: ConstValue,
 }
 
-#[derive(Debug, RustcEncodable, RustcDecodable)]
+#[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum ConstValue {
     Int(i64),
     Double(f64),
@@ -264,7 +264,7 @@ pub enum ConstValue {
 }
 
 
-#[derive(Debug, RustcEncodable, RustcDecodable)]
+#[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Namespace {
     pub lang: String,
     pub module: String
@@ -285,8 +285,8 @@ pub fn parse(input: &str) -> Result<Option<Document>, Err<&[u8], u32>> {
 
 
 named!(document <Document>, chain!(
-    headers: many0!(header) ~
-        defs: many0!(definition),
+    headers: separated_list!(multispace, header) ~ multispace ~
+        defs: separated_list!(multispace, definition),
     || Document {
         headers: headers,
         definitions: defs,
@@ -297,13 +297,16 @@ named!(header <Header>, alt!(
     namespace  => {Header::Namespace}));
 
 named!(include <Include>, chain!(
-    tag!("include") ~ file: literal,
+    tag!("include") ~ multispace ~
+        file: literal,
     || Include{
         path: file,
     }));
 
 named!(namespace <Namespace>, chain!(
-    tag!("namespace") ~ lang: identifier ~ ns: identifier,
+    tag!("namespace") ~ multispace ~
+        lang: identifier ~ multispace ~
+        ns: identifier,
     || Namespace{
         lang: lang,
         module: ns,
@@ -318,8 +321,12 @@ named!(definition <Definition>, alt!(
     service   => {Definition::Service}));
 
 named!(const_ <Const>, chain!(
-    tag!("const") ~ ty: field_type ~ id: identifier ~
-        tag!("=") ~ value: const_value ~ opt!(list_separator),
+    tag!("const") ~ multispace ~
+        ty: field_type ~ multispace ~
+        id: identifier ~ multispace ~
+        tag!("=") ~ multispace ~
+        value: const_value ~
+        opt!(multispace) ~ opt!(list_separator),
     || Const {
         ident: id,
         ty: ty,
@@ -327,27 +334,41 @@ named!(const_ <Const>, chain!(
     }));
 
 named!(typedef <Typedef>, chain!(
-    tag!("typedef") ~ ty: definition_type ~ id: identifier,
+    tag!("typedef") ~ multispace ~
+        ty: definition_type ~ multispace ~
+        id: identifier,
     || Typedef{
         ty: ty,
         ident: id,
     }));
 
 named!(enum_ <Enum>, chain!(
-    tag!("enum") ~ id: identifier ~ tag!("{") ~
-        variants: many0!(chain!(
-            variant: identifier ~
-                index: chain!(tag!("=") ~ idx: int_constant, || idx)? ~
-                list_separator,
-            || (variant, index))) ~
-        tag!("}"),
+    tag!("enum") ~ multispace ~
+        id: identifier ~ multispace ~
+        variants: delimited!(
+            tag!("{"),
+            separated_list!(
+                multispace,
+                chain!(
+                    variant: identifier ~
+                        index: chain!(
+                            multispace? ~
+                                tag!("=") ~
+                                multispace? ~
+                                idx: int_constant, || idx)? ~
+                        multispace ~
+                        list_separator,
+                    || (variant, index))),
+            tag!("}")),
     || Enum{
         ident: id,
         variants: variants,
     }));
 
 named!(struct_ <Struct>, chain!(
-    tag!("struct") ~ id: identifier ~  tag!("{") ~
+    tag!("struct") ~ multispace ~
+        id: identifier ~ multispace ~
+        tag!("{") ~ multispace ~
         fields: many0!(field) ~
         tag!("}") ,
     || Struct {
@@ -525,3 +546,26 @@ named!(identifier <String>, chain!(
     || format!("{}{}", h, t)));
 
 named!(list_separator, alt!(tag!(",") | tag!(";")));
+
+
+#[test]
+fn test_namespace() {
+    assert_eq!(namespace(b"namespace rust aaaa").unwrap().1, Namespace {
+        lang: "rust".to_string(),
+        module: "aaaa".to_string(),
+    });
+
+    assert_eq!(namespace(b"namespace ruby Aaa").unwrap().1, Namespace {
+        lang: "ruby".to_string(),
+        module: "Aaa".to_string(),
+    });
+}
+
+
+#[test]
+fn test_identifier() {
+    assert_eq!(identifier(b"aiueo").unwrap().1, "aiueo".to_string());
+    assert_eq!(identifier(b"_aiueo").unwrap().1, "_aiueo".to_string());
+    assert_eq!(identifier(b"_aiu3o").unwrap().1, "_aiu3o".to_string());
+    assert_eq!(identifier(b"_aiu.o").unwrap().1, "_aiu.o".to_string());
+}
