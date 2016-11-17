@@ -12,6 +12,7 @@ authors = ["Daniel Fagnan <dnfagnan@gmail.com>", "Sunrin SHIMURA (keen) <3han5ch
 [[bin]]
 name = "tokio-thrift"
 path = "src/bin/tokio_thrift.rs"
+doc = false
 
 [dependencies]
 byteorder = "0.4"
