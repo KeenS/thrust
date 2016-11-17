@@ -1,4 +1,4 @@
-use protocol::{Serializer, Deserializer, ThriftSerializer, ThriftField, ThriftMessage, ThriftDeserializer, ThriftMessageType, ThriftType, Error};
+use super::{Serializer, Deserializer, ThriftSerializer, ThriftField, ThriftMessage, ThriftDeserializer, ThriftMessageType, ThriftType, Error};
 use transport::{VoidTransport, ReadTransport, WriteTransport};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use std::iter;

@@ -1,3 +1,6 @@
+pub mod binary_protocol;
+pub use self::{binary_protocol as binary};
+
 use std::io;
 use std::convert;
 use byteorder;

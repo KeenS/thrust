@@ -1,3 +1,6 @@
+pub mod framed_transport;
+pub use self::{framed_transport as framed};
+
 use std::io::{self, Write, Read, Cursor};
 
 

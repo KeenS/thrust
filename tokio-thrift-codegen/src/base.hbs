@@ -5,7 +5,7 @@ use tokio_thrift::protocol::{ThriftDeserializer, ThriftSerializer, ThriftMessage
 use tokio_thrift::protocol::{Error, ThriftType};
 use tokio_thrift::protocol::{Serializer, Deserializer};
 use tokio_thrift::protocol::{Deserialize, Serialize};
-use tokio_thrift::framed_transport::*;
+use tokio_thrift::transport::framed::*;
 use tokio_core::reactor::Handle;
 use tokio_core::net::TcpStream;
 use tokio_proto::server;

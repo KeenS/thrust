@@ -2,17 +2,17 @@ use std::io::{self, Cursor};
 use tokio_core::io::Io;
 use easy::{Parse, Serialize, EasyBuf, EasyFramed};
 use protocol::{Deserialize as De, Serialize as Se, Deserializer, ThriftDeserializer, Error};
-use binary_protocol::BinaryProtocol;
+use protocol::binary::BinaryProtocol;
 use futures::{Poll, Async};
 use std::marker::PhantomData;
 
-pub struct TTransport<T> {
+pub struct FramedTransport<T> {
     phantom: PhantomData<T>
 }
 
-impl <T>TTransport<T> {
+impl <T>FramedTransport<T> {
     pub fn new() -> Self {
-        TTransport {
+        FramedTransport {
             phantom: PhantomData
         }
     }
@@ -28,7 +28,7 @@ macro_rules! try_async {
         }
     )
 }
-impl <T>Parse for TTransport<T>
+impl <T>Parse for FramedTransport<T>
     where T: De,
 {
     type Out = T;
@@ -45,7 +45,7 @@ impl <T>Parse for TTransport<T>
     }
 }
 
-impl <T>Serialize for TTransport<T>
+impl <T>Serialize for FramedTransport<T>
     where T: Se,
 {
     type In = T;

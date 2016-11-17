@@ -1,7 +1,8 @@
 [package]
 name = "tokio-thrift-macros"
 version = "0.1.0"
-authors = ["Daniel Fagnan <dnfagnan@gmail.com>"]
+authors = ["Daniel Fagnan <dnfagnan@gmail.com>", "Sunrin SHIMURA (keen) <3han5chou7@gmail.com>"]
+workspace = "../"
 
 [lib]
 crate-type = ["dylib"]
@@ -9,5 +10,15 @@ name = "tokio_thrift_macros"
 path = "src/lib.rs"
 plugin = true
 
+
+
 [dependencies]
 tokio-thrift-codegen = { path = "../tokio-thrift-codegen" }
+
+
+[dev-dependencies]
+futures = "0.1.3"
+tokio-core = "0.1"
+tokio-proto = { git = "https://github.com/tokio-rs/tokio-proto" }
+tokio-service = { git = "https://github.com/tokio-rs/tokio-service" }
+tokio-thrift = { path = ".." }

@@ -1,3 +1,5 @@
+#[macro_use]
+extern crate log;
 extern crate tokio_thrift_codegen;
 extern crate rustc_serialize;
 extern crate docopt;
@@ -33,7 +35,7 @@ fn main() {
                             .and_then(|d| d.decode())
                             .unwrap_or_else(|e| e.exit());
 
-    println!("{:?}", args);
+    debug!("{:?}", args);
 
     let mut input = File::open(args.arg_input).expect("input file does not exist.");
     let mut s = String::new();
