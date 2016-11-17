@@ -1,5 +1,7 @@
 extern crate handlebars;
 extern crate rustc_serialize;
+#[macro_use]
+extern crate nom;
 
 pub mod parser;
 use std::io::{self, Write};

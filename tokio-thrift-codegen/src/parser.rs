@@ -1,6 +1,8 @@
 extern crate rustc_serialize;
 use rustc_serialize::{Decodable, Encodable, Decoder, Encoder};
 use std::char;
+use std::str::from_utf8;
+use nom::{alpha, digit};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Ty {
@@ -178,8 +180,26 @@ pub struct Enum {
 }
 
 #[derive(Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+pub struct Union {
+    pub ident: String,
+    pub fields: Vec<StructField>
+}
+
+
+#[derive(Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub struct Struct {
     pub ident: String,
+    pub fields: Vec<StructField>
+}
+
+#[derive(Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+pub struct Exception {
+    pub ident: String,
+    pub fields: Vec<StructField>
+}
+
+#[derive(Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+pub struct Throws {
     pub fields: Vec<StructField>
 }
 
@@ -275,922 +295,124 @@ pub enum Error {
     NoMoreItems
 }
 
-#[derive(Debug)]
-pub struct Parser<'a> {
-    buffer: &'a str,
-    pos: usize,
-    pub token: Token,
-    last_token_eof: bool
-}
 
-impl<'a> Parser<'a> {
-    pub fn new(input: &'a str) -> Parser<'a> {
-        Parser {
-            buffer: input,
-            pos: 0,
-            token: Token::B,
-            last_token_eof: false
-        }
-    }
 
-    pub fn parse_struct(&mut self) -> Result<Struct, Error> {
-        self.expect_keyword(Keyword::Struct)?;
+named!(document, chain!(
+    many0!(header) ~
+    many0!(definition), || ()));
 
-        let ident = self.expect_ident()?;
-        let mut fields = Vec::new();
+named!(header, alt!(include | namespace));
+named!(include, chain!(tag!("include") ~ file: literal, || file));
+named!(namespace <Namespace>, chain!(tag!("namespace") ~ tag!("rust") ~ ns: identifire, || identifier));
+named!(definition, alt!(const_ | typedef | enum_ | struct_ | union | exception | service));
+named!(const_ <Const>, chain!(
+    tag!("const") ~ ty: field_type ~ id: identifier ~
+        tag!("=") ~ value: const_value ~ opt!(list_separator),
+    || (ty, id, value)));
 
-        self.expect(&Token::LCurly)?;
+named!(typedef <Typedef>, chain!(tag!("typedef") ~ ty: definition_type ~ id: identifier, || (ty, id)));
+named!(enum_ <Enum>, chain!(tag!("enum") ~ id: identifier ~ tag!("{") ~
+                     variants: many0!(chain!(
+                         variant: identifier ~
+                             index: chain!(tag!("=") ~ idx: int_constant, || idx)? ~
+                             list_separator,
+                         || (variant, index))) ~
+                     tag!("}"),
+                     || (id, variands)));
+named!(struct_ <Struct>, chain!(tag!("struct") ~ id: identifier ~  tag!("{") ~
+                       fields: many0!(field) ~
+                       tag!("}") ,
+                       || (id, fields)));
+named!(union <Union>, chain!(tag!("union")  ~ id: identifier ~  tag!("{") ~
+                     fields: many0!(field) ~
+                     tag!("}") ,
+                     || (id, fields)));
 
-        loop {
-            if self.eat(&Token::RCurly) {
-                break;
-            }
+named!(exception <Exception>, chain!(tag!("exception")  ~ id: identifier ~  tag!("{") ~
+                     fields: many0!(field) ~
+                     tag!("}") ,
+                     || (id, fields)));
 
-            fields.push(self.parse_struct_field()?);
+named!(service <Service>, chain!(tag!("service")  ~ id: identifier ~
+                       ext: chain!(tag!("extends") ~ exid: identifier, || exid)? ~
+                       tag!("{") ~
+                       functions: many0!(function) ~
+                       tag!("}") ,
+                       || (id, ext, functions)));
 
-            if self.eat_separator() {
-                continue;
-            } else {
-                break;
-            }
-        }
+named!(field <StructField>, chain!(
+    idx: field_id? ~
+        req: field_req? ~
+        ty: field_type ~
+        id: identifier ~
+        value: chain!(tag!("=")? ~ v: const_value, || v)? ~
+        list_separator?,
+    || (idx, req, ty, id, value)));
 
-        Ok(Struct {
-            ident: ident,
-            fields: fields
-        })
-    }
-
-    pub fn parse_struct_field(&mut self) -> Result<StructField, Error> {
-        let seq = self.parse_number()?;
-
-        self.expect(&Token::Colon)?;
-
-        let optional = if self.eat_keyword(Keyword::Optional) {
-            true
-        } else if self.eat_keyword(Keyword::Required) {
-            false
-        } else {
-            return Err(Error::MissingFieldAttribute);
-        };
-
-        let ty = self.parse_ty()?;
-        let ident = self.parse_ident()?;
-
-        Ok(StructField {
-            optional: optional,
-            seq: seq as i16,
-            ty: ty,
-            ident: ident
-        })
-    }
-
-    pub fn parse_number(&mut self) -> Result<i64, Error> {
-        self.skip_b();
-
-        let n = match self.token {
-            Token::Number(n) => n,
-            _ => return Err(Error::ExpectedNumber)
-        };
-
-        self.bump();
-        Ok(n)
-    }
-
-    pub fn skip_b(&mut self) {
-        if self.token == Token::B {
-            self.bump();
-        }
-    }
-
-    pub fn parse_enum(&mut self) -> Result<Enum, Error> {
-        self.expect_keyword(Keyword::Enum)?;
-
-        let ident = self.expect_ident()?;
-        let mut variants = Vec::new();
-
-        self.expect(&Token::LCurly)?;
-
-        loop {
-            if self.eat(&Token::RCurly) {
-                break;
-            }
-
-            variants.push(self.parse_ident()?);
-
-            if self.eat(&Token::Comma) {
-                continue;
-            } else {
-                self.eat(&Token::RCurly);
-                break;
-            }
-        }
-
-        Ok(Enum {
-            ident: ident,
-            variants: variants
-        })
-    }
-
-    pub fn parse_include(&mut self) -> Result<Include, Error> {
-        self.expect_keyword(Keyword::Include)?;
-
-        Ok(Include {
-            path: self.expect_string()?
-        })
-    }
-
-    pub fn parse_typedef(&mut self) -> Result<Typedef, Error> {
-        self.expect_keyword(Keyword::Typedef)?;
-
-        Ok(Typedef(self.parse_ty()?, self.expect_ident()?))
-    }
-
-    pub fn parse_const(&mut self) -> Result<Const, Error> {
-        self.expect_keyword(Keyword::Const)?;
-        let ty = self.parse_ty()?;
-        Ok(Const {
-            ident: self.expect_ident()?,
-            ty: ty.clone(),
-            value: {
-                self.eat(&Token::Eq);
-                self.expect_constvalue(ty.clone())?
-            }
-        })
-    }
-
-    pub fn parse_namespace(&mut self) -> Result<Namespace, Error> {
-        self.expect_keyword(Keyword::Namespace)?;
-
-        let lang = self.expect_ident()?;
-        let module = self.expect_ident()?;
-
-        Ok(Namespace {
-            lang: lang,
-            module: module
-        })
-    }
-
-    pub fn parse_service(&mut self) -> Result<Service, Error> {
-        self.expect_keyword(Keyword::Service)?;
-
-        let mut methods = Vec::new();
-        let ident = self.expect_ident()?;
-        self.expect(&Token::LCurly)?;
-
-        loop {
-            if self.eat(&Token::RCurly) {
-                break;
-            }
-
-            // Try and eat a keyword
-            let oneway = if self.eat_keyword(Keyword::Oneway) {
-                true
-            } else {
-                false
+named!(field_id <i32>, chain!(id: int_constant ~ tag!(":"), || id));
+named!(field_req <bool>, alt!(tag!("required") | tag!("optional")));
+named!(function <ServiceMethod>, chain!(
+    tag!("oneway")? ~
+        ty: function_type ~
+        id: identifier ~
+        tag!("(") ~
+        args: many0!(field) ~
+        tag!(")") ~
+        throws? ~
+        list_separator?,
+    || (ty, id, args)));
+named!(function_type <Ty>, alt!(field_type | tag!("void")));
+named!(throws <Throws>, chain!(tag!("throws") ~ fields: many0!(field), || fields));
+named!(field_type <Ty>, alt!(identifier | base_type | container_type));
+named!(definition_type <Ty>, alt!(base_type | container_type));
+named!(base_type <Ty>, alt!(
+    tag!("bool") | tag!("byte") | tag!("i8") | tag!("i16") |
+    tag!("i32") | tag!("i64") | tag!("double") | tag!("string") |
+    tag!("binary")));
+named!(container_type <Ty>, alt!(map_type | set_type | list_type));
+named!(map_type <Ty>, chain!(
+    tag!("map") ~ tag!("<") ~
+        k: field_type ~ tag!(",") ~ v: field_type ~
+        tag!(">"),
+    || (k, v)));
+named!(list_type <Ty>, chain!(tag!("list") ~ tag!("<") ~ v: field_type ~ tag!(">"), || v));
+named!(const_value <ConstValue>, alt!(int_constant | double_constant | literal |
+                        identifier | const_list | const_map));
+named!(int_constant <i64>, chain!(sgn: alt!(tag!("+") | tag!("-"))? ~ n: digit, || (sgn, n)));
+named!(double_constant <f64>, chain!(
+    sgn: alt!(tag!("+") | tag!("-"))? ~
+        n: digit ~
+        frac: chain!(tag!(".") ~ f: digit, || f)? ~
+        pow: chain!(alt!(tag!("E") | tag!("e")) ~ p: int_constant, || p) ?
+    , || (sgn, n, frac, pow)));
+named!(const_list <ConstValue>, chain!(
+    tag!("[") ~
+        vs: many0!(chain!(v: const_value ~ list_separator?, || v)) ~
+        tag!("]"),
+    || vs));
+named!(const_map <ConstValue>, chain!(
+    tag!("{") ~
+        vs: many0!(chain!(k: const_value ~ v: const_value ~ list_separator?, || v)) ~
+        tag!("}"),
+    || vs));
+named!(literal <String>, alt!(chain!(
+    tag!("\"") ~
+        s: not!(char!('\"'))~
+        tag!("\""),
+    || s) |
+                     chain!(
+                         tag!("'") ~
+                             s: not!(char!('\''))~
+                             tag!("'"),
+                         || s)));
+named!(identifier <String>, chain!(
+    h: map_res!(alt!(alpha | tag!("_")), from_utf8) ~
+        t: map!(many0!(alt!(alpha | digit | tag!(".") | tag!("_"))), |vs| {
+            let mut s = String::new();
+            for v in vs {
+                s + &from_utf8(v).expect("invalid utf8");
             };
-
-            let method_ty = self.parse_ty()?;
-            let method_ident = self.parse_ident()?;
-            let mut method_fields = Vec::new();
-
-            self.expect(&Token::LParen)?;
-
-            loop {
-                if self.eat(&Token::RParen) {
-                    break;
-                }
-
-                let seq = self.parse_number()?;
-                self.expect(&Token::Colon)?;
-                let field_ty = self.parse_ty()?;
-                let field_ident = self.parse_ident()?;
-
-                method_fields.push(StructField {
-                    optional: false,
-                    seq: seq as i16,
-                    ty: field_ty,
-                    ident: field_ident
-                });
-
-                if self.eat(&Token::Comma) {
-                    continue;
-                } else if self.eat(&Token::RParen) {
-                    break;
-                } else {
-                    panic!("failed to properly parse the service {:?}", ident);
-                }
-            }
-
-            methods.push(ServiceMethod {
-                oneway: oneway,
-                ident: method_ident,
-                ty: method_ty,
-                args: method_fields
-            });
-
-            if self.eat_separator() {
-                continue;
-            } else {
-                self.eat(&Token::RCurly);
-                break;
-            }
+            s
         }
-
-        Ok(Service {
-            ident: ident,
-            methods: methods
-        })
-    }
-
-    pub fn expect_string(&mut self) -> Result<String, Error> {
-        let val = match self.token {
-            Token::QuotedString(ref s) => s.clone(),
-            _ => return Err(Error::ExpectedString)
-        };
-
-        self.bump();
-        Ok(val)
-    }
-
-    pub fn expect_constvalue(&mut self, ty: Ty) -> Result<ConstValue, Error> {
-        println!("{:?}: {:?}", self.token, ty);
-        let val = match (&self.token, ty) {
-            (&Token::Number(i), Ty::Bool) |
-            (&Token::Number(i), Ty::Byte) |
-            (&Token::Number(i), Ty::I16) |
-            (&Token::Number(i), Ty::I32) |
-            (&Token::Number(i), Ty::I64)
-                => ConstValue::Int(i as i64),
-            (&Token::QuotedString(ref s), Ty::String)
-                => ConstValue::String(s.clone()),
-            _ => return Err(Error::ExpectedConstValue)
-        };
-
-        self.bump();
-        Ok(val)
-    }
-
-    pub fn expect_keyword(&mut self, keyword: Keyword) -> Result<(), Error> {
-        if !self.eat_keyword(keyword) {
-            return Err(Error::ExpectedKeyword(keyword));
-        }
-
-        Ok(())
-    }
-
-    pub fn expect(&mut self, token: &Token) -> Result<Token, Error> {
-        if !self.eat(token) {
-            return Err(Error::ExpectedToken(token.clone()));
-        } else {
-            Ok(self.token.clone())
-        }
-    }
-
-    pub fn parse_ident(&mut self) -> Result<String, Error> {
-        if self.token == Token::B {
-            self.bump();
-        }
-
-        let i = match self.token {
-            Token::Ident(ref s) => s.clone(),
-            _ => return Err(Error::ExpectedIdent)
-        };
-
-        self.bump();
-        Ok(i)
-    }
-
-    pub fn parse_ty(&mut self) -> Result<Ty, Error> {
-        let ident = self.parse_ident()?;
-        // map, set, list
-        if self.eat(&Token::LAngle) {
-            let ty = match &*ident {
-                "map" => {
-                    let a = self.parse_ty()?;
-                    self.expect(&Token::Comma)?;
-                    let b = self.parse_ty()?;
-
-                    Ty::Map(Box::new(a), Box::new(b))
-                },
-                "set" => Ty::Set(Box::new(self.parse_ty()?)),
-                "list" => Ty::List(Box::new(self.parse_ty()?)),
-                _ => panic!("Error!")
-            };
-
-            self.expect(&Token::RAngle)?;
-
-            Ok(ty)
-        } else {
-            Ok(Ty::from(ident))
-        }
-    }
-
-    pub fn expect_ident(&mut self) -> Result<String, Error> {
-        let ident = match self.token {
-            Token::Ident(ref s) => s.clone(),
-            _ => return Err(Error::Expected)
-        };
-
-        self.bump();
-        Ok(ident)
-    }
-
-    pub fn lookahead_keyword(&mut self, keyword: Keyword) -> bool {
-        while vec![Token::Comma, Token::Semi, Token::Comment, Token::Whitespace, Token::B].contains(&self.token) {
-            self.bump();
-        }
-        self.lookahead(&Token::Keyword(keyword))
-    }
-
-    pub fn lookahead(&mut self, token: &Token) -> bool {
-        if self.token == Token::B {
-            self.bump();
-        }
-
-        if self.token == *token {
-            true
-        } else {
-            false
-        }
-    }
-
-    pub fn eat_keyword(&mut self, keyword: Keyword) -> bool {
-        self.eat(&Token::Keyword(keyword))
-    }
-
-    fn next_char(&self) -> char {
-        self.buffer[self.pos..].chars().next().unwrap()
-    }
-
-    fn eof(&self) -> bool {
-        self.pos >= self.buffer.len()
-    }
-
-    fn consume_char(&mut self) -> Option<char> {
-        let mut iter = self.buffer[self.pos..].char_indices();
-        iter.next().map(|(_, cur_char)| {
-            let (next_pos, _) = iter.next().unwrap_or((1, ' '));
-            self.pos += next_pos;
-            cur_char
-        })
-    }
-
-    fn next_token(&mut self) -> Token {
-        if self.eof() {
-            return Token::Eof;
-        }
-
-        let ch = match self.consume_char() {
-            Some(ch) => ch,
-            None => return Token::Eof,
-        };
-
-        match ch {
-            ':' => Token::Colon,
-            '.' => Token::Dot,
-            ';' => Token::Semi,
-            ',' => Token::Comma,
-            '"' => {
-                let val = self.consume_while(|c| c != '"' || c != '\"');
-                match self.consume_char() {
-                    Some(_) => (),
-                    None => return Token::Eof,
-                }
-                Token::QuotedString(val)
-            },
-            '=' => Token::Eq,
-            '(' => Token::LParen,
-            ')' => Token::RParen,
-            '{' => Token::LCurly,
-            '}' => Token::RCurly,
-            '<' => Token::LAngle,
-            '>' => Token::RAngle,
-            '-' => {
-                let mut val = self.consume_while(|c| match c {
-                    '0'...'9' => true,
-                    _ => false
-                });
-                val = format!("-{}", val);
-                Token::Number(val.parse().unwrap())
-
-            }
-            '0'...'9' => {
-                let mut val = self.consume_while(|c| match c {
-                    '0'...'9' => true,
-                    _ => false
-                });
-
-                val = format!("{}{}", ch, val);
-
-                Token::Number(val.parse().unwrap())
-            },
-            '/' | '#' => {
-                if self.next_char() == '/' || ch == '#' {
-                    self.consume_while(|c| c != '\n' && c != '\r');
-                    return Token::Comment
-                } else if self.next_char() == '*' {
-                    match self.consume_char() {
-                        Some(_) => (),
-                        None => return Token::Eof,
-                    }
-                    loop {
-                        self.consume_while(|c| c != '*');
-                        match self.consume_char() {
-                            Some(_) => (),
-                            None => return Token::Eof,
-                        }
-
-
-                        if self.next_char() == '/' {
-                            break;
-                        }
-                    }
-
-                    // Consume the following '/' because we just did a lookahead previously.
-                    match self.consume_char() {
-                        Some(_) => (),
-                        None => return Token::Eof,
-                    }
-
-                    return Token::Comment
-                }
-
-                Token::Eof
-            },
-            c if c.is_whitespace() => {
-                self.consume_whitespace();
-                self.next_token()
-            },
-            // identifier
-            'a'...'z' | 'A'...'Z' | '_' => {
-                let mut ident = self.consume_while(|c| match c {
-                    'a'...'z' => true,
-                    'A'...'Z' => true,
-                    '_' => true,
-                    '0'...'9' => true,
-                    _ => false
-                });
-
-                ident = format!("{}{}", ch, ident);
-
-                match &*ident {
-                    "namespace" => return Token::Keyword(Keyword::Namespace),
-                    "struct" => return Token::Keyword(Keyword::Struct),
-                    "enum" => return Token::Keyword(Keyword::Enum),
-                    "service" => return Token::Keyword(Keyword::Service),
-                    "optional" => return Token::Keyword(Keyword::Optional),
-                    "required" => return Token::Keyword(Keyword::Required),
-                    "throws" => return Token::Keyword(Keyword::Throws),
-                    "oneway" => return Token::Keyword(Keyword::Oneway),
-                    "typedef" => return Token::Keyword(Keyword::Typedef),
-                    "exception" => return Token::Keyword(Keyword::Exception),
-                    "include" => return Token::Keyword(Keyword::Include),
-                    "const" => return Token::Keyword(Keyword::Const),
-                    _ => Token::Ident(ident)
-                }
-            },
-            ch => panic!("unexpected char: {} at {}", ch, self.pos),
-        }
-    }
-
-    pub fn eat_separator(&mut self) -> bool {
-        self.eat(&Token::Semi) || self.eat(&Token::Comma)
-    }
-
-    pub fn eat(&mut self, token: &Token) -> bool {
-        if self.token == Token::B {
-            self.bump();
-        }
-
-        if self.token == *token {
-            self.bump();
-            true
-        } else {
-            false
-        }
-    }
-
-    fn consume_while<F>(&mut self, test: F) -> String
-        where F: Fn(char) -> bool {
-        let mut result = String::new();
-        while !self.eof() && test(self.next_char()) {
-            match self.consume_char() {
-                Some(c) => result.push(c),
-                None => break,
-            }
-        }
-        return result;
-    }
-
-    fn consume_whitespace(&mut self) {
-        self.consume_while(char::is_whitespace);
-    }
-
-    pub fn bump(&mut self) {
-        if self.last_token_eof {
-            panic!("attempted to bump past eof.");
-        }
-
-        if self.token == Token::Eof {
-            self.last_token_eof = true;
-        }
-
-        self.token = self.next_token();
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn eof_token() {
-        let mut parser = Parser::new("");
-        assert_eq!(parser.eof(), true);
-        assert_eq!(parser.next_token(), Token::Eof);
-    }
-
-    #[test]
-    fn colon_token() {
-        let mut parser = Parser::new(":");
-        assert_eq!(parser.next_token(), Token::Colon);
-    }
-
-    #[test]
-    fn dot_token() {
-        let mut parser = Parser::new(".");
-        assert_eq!(parser.next_token(), Token::Dot);
-    }
-
-    #[test]
-    fn equal_token() {
-        let mut parser = Parser::new("=");
-        assert_eq!(parser.next_token(), Token::Eq);
-    }
-
-    #[test]
-    fn comma_token() {
-        let mut parser = Parser::new(",");
-        assert_eq!(parser.next_token(), Token::Comma);
-    }
-
-    #[test]
-    fn curly_token() {
-        let mut parser = Parser::new("{}");
-        assert_eq!(parser.next_token(), Token::LCurly);
-        assert_eq!(parser.next_token(), Token::RCurly);
-    }
-
-    #[test]
-    fn angle_token() {
-        let mut parser = Parser::new("<>");
-        assert_eq!(parser.next_token(), Token::LAngle);
-        assert_eq!(parser.next_token(), Token::RAngle);
-    }
-
-    #[test]
-    fn semi_token() {
-        let mut parser = Parser::new(";");
-        assert_eq!(parser.next_token(), Token::Semi);
-    }
-
-    #[test]
-    #[should_panic]
-    fn whitespace_token() {
-        let mut parser = Parser::new(" ");
-        assert_eq!(parser.next_token(), Token::Whitespace);
-    }
-
-    #[test]
-    fn whitespace_grab_token() {
-        let mut parser = Parser::new("     >");
-        assert_eq!(parser.next_token(), Token::RAngle);
-    }
-
-    #[test]
-    fn comment_token() {
-        let mut parser = Parser::new("<//foobar\n:");
-        assert_eq!(parser.next_token(), Token::LAngle);
-        assert_eq!(parser.next_token(), Token::Comment);
-        assert_eq!(parser.next_token(), Token::Colon);
-    }
-
-    #[test]
-    fn multi_comment_token() {
-        let mut parser = Parser::new("</*\n
-                                     fofoo*/>");
-        assert_eq!(parser.next_token(), Token::LAngle);
-        assert_eq!(parser.next_token(), Token::Comment);
-        assert_eq!(parser.next_token(), Token::RAngle);
-    }
-
-    #[test]
-    fn parens_token() {
-        let mut parser = Parser::new("()");
-        assert_eq!(parser.next_token(), Token::LParen);
-        assert_eq!(parser.next_token(), Token::RParen);
-    }
-
-    #[test]
-    fn hash_comment_token() {
-        let mut parser = Parser::new("<#foobar\n:");
-        assert_eq!(parser.next_token(), Token::LAngle);
-        assert_eq!(parser.next_token(), Token::Comment);
-        assert_eq!(parser.next_token(), Token::Colon);
-    }
-
-    #[test]
-    fn ident_token() {
-        assert_eq!(Parser::new("foobar").next_token(), Token::Ident("foobar".to_string()));
-        assert_eq!(Parser::new("foobar123").next_token(), Token::Ident("foobar123".to_string()));
-        assert_eq!(Parser::new("foobar_123").next_token(), Token::Ident("foobar_123".to_string()));
-        assert_eq!(Parser::new("_FFF").next_token(), Token::Ident("_FFF".to_string()));
-    }
-
-    #[test]
-    fn quoted_string_token() {
-        assert_eq!(Parser::new("\"hello world 12338383\"").next_token(), Token::QuotedString("hello world 12338383".to_string()));
-    }
-
-    #[test]
-    #[should_panic]
-    fn fail_ident_token() {
-        assert_eq!(Parser::new("1foobar").next_token(), Token::Ident("1foobar".to_string()));
-    }
-
-    #[test]
-    fn keywords_token() {
-        assert_eq!(Parser::new("oneway").next_token(), Token::Keyword(Keyword::Oneway));
-        assert_eq!(Parser::new("exception").next_token(), Token::Keyword(Keyword::Exception));
-        assert_eq!(Parser::new("struct").next_token(), Token::Keyword(Keyword::Struct));
-        assert_eq!(Parser::new("enum").next_token(), Token::Keyword(Keyword::Enum));
-        assert_eq!(Parser::new("namespace").next_token(), Token::Keyword(Keyword::Namespace));
-        assert_eq!(Parser::new("service").next_token(), Token::Keyword(Keyword::Service));
-        assert_eq!(Parser::new("throws").next_token(), Token::Keyword(Keyword::Throws));
-        assert_eq!(Parser::new("typedef").next_token(), Token::Keyword(Keyword::Typedef));
-        assert_eq!(Parser::new("optional").next_token(), Token::Keyword(Keyword::Optional));
-        assert_eq!(Parser::new("required").next_token(), Token::Keyword(Keyword::Required));
-        assert_eq!(Parser::new("const").next_token(), Token::Keyword(Keyword::Const));
-    }
-
-    #[test]
-    fn eat_token() {
-        let mut p = Parser::new(":");
-        assert_eq!(p.eat(&Token::Colon), true);
-    }
-
-    #[test]
-    fn eat_keywords() {
-        let mut p = Parser::new("oneway");
-        assert_eq!(p.eat_keyword(Keyword::Oneway), true);
-    }
-
-    #[test]
-    fn parse_namespace() {
-        let mut p = Parser::new("namespace rust foobar");
-        let ns = p.parse_namespace().unwrap();
-        assert_eq!(&*ns.lang, "rust");
-        assert_eq!(&*ns.module, "foobar");
-    }
-
-    #[test]
-    fn parse_namesp_ace() {
-        let mut p = Parser::new("namespace rust foobar");
-        let ns = p.parse_namespace().unwrap();
-        assert_eq!(&*ns.lang, "rust");
-        assert_eq!(&*ns.module, "foobar");
-    }
-
-    #[test]
-    fn parse_include() {
-        let mut p = Parser::new("include \"./../include.thrift\"");
-        let ns = p.parse_include().unwrap();
-        assert_eq!(&*ns.path, "./../include.thrift");
-    }
-
-    #[test]
-    fn parse_bool_ty() {
-        let mut p = Parser::new("bool");
-        assert_eq!(p.parse_ty().unwrap(), Ty::Bool);
-    }
-
-    #[test]
-    fn parse_binary_ty() {
-        let mut p = Parser::new("binary");
-        assert_eq!(p.parse_ty().unwrap(), Ty::Binary);
-    }
-
-    #[test]
-    fn parse_byte_ty() {
-        let mut p = Parser::new("byte");
-        assert_eq!(p.parse_ty().unwrap(), Ty::Byte);
-    }
-
-    #[test]
-    fn parse_i16_ty() {
-        let mut p = Parser::new("i16");
-        assert_eq!(p.parse_ty().unwrap(), Ty::I16);
-    }
-
-    #[test]
-    fn parse_i32_ty() {
-        let mut p = Parser::new("i32");
-        assert_eq!(p.parse_ty().unwrap(), Ty::I32);
-    }
-
-    #[test]
-    fn parse_i64_ty() {
-        let mut p = Parser::new("i64");
-        assert_eq!(p.parse_ty().unwrap(), Ty::I64);
-    }
-
-    #[test]
-    fn parse_double_ty() {
-        let mut p = Parser::new("double");
-        assert_eq!(p.parse_ty().unwrap(), Ty::Double);
-    }
-
-    #[test]
-    fn parse_string_ty() {
-        let mut p = Parser::new("string");
-        assert_eq!(p.parse_ty().unwrap(), Ty::String);
-    }
-
-    #[test]
-    fn parse_list_string_ty() {
-        let mut p = Parser::new("list<string>");
-        assert_eq!(p.parse_ty().unwrap(), Ty::List(Box::new(Ty::String)));
-    }
-
-    #[test]
-    fn parse_list_double_ty() {
-        let mut p = Parser::new("list<double>");
-        assert_eq!(p.parse_ty().unwrap(), Ty::List(Box::new(Ty::Double)));
-    }
-
-    #[test]
-    fn parse_list_list_byte_ty() {
-        let mut p = Parser::new("list<list<byte>>");
-        assert_eq!(p.parse_ty().unwrap(), Ty::List(Box::new(Ty::List(Box::new(Ty::Byte)))));
-    }
-
-    #[test]
-    fn parse_set_byte_ty() {
-        let mut p = Parser::new("set<byte>");
-        assert_eq!(p.parse_ty().unwrap(), Ty::Set(Box::new(Ty::Byte)));
-    }
-
-    #[test]
-    fn parse_set_string_ty() {
-        let mut p = Parser::new("set<string>");
-        assert_eq!(p.parse_ty().unwrap(), Ty::Set(Box::new(Ty::String)));
-    }
-
-    #[test]
-    fn parse_map_i32_string_ty() {
-        let mut p = Parser::new("map<i32,string>");
-        assert_eq!(p.parse_ty().unwrap(), Ty::Map(Box::new(Ty::I32), Box::new(Ty::String)));
-    }
-
-    #[test]
-    fn parse_map_i32_list_string_ty() {
-        let mut p = Parser::new("map<i32,list<string>>");
-        assert_eq!(p.parse_ty().unwrap(), Ty::Map(Box::new(Ty::I32), Box::new(Ty::List(Box::new(Ty::String)))));
-    }
-
-    #[test]
-    fn parse_typedef() {
-        let mut p = Parser::new("typedef i32 MyInteger");
-        let def = p.parse_typedef().unwrap();
-        assert_eq!(def.0, Ty::I32);
-        assert_eq!(&*def.1, "MyInteger");
-    }
-
-    #[test]
-    fn parse_empty_enum() {
-        let mut p = Parser::new("enum FooBar {}");
-        let def = p.parse_enum().unwrap();
-        assert_eq!(&*def.ident, "FooBar");
-        assert_eq!(def.variants.len(), 0);
-    }
-
-    #[test]
-    fn parse_one_variant_enum() {
-        let mut p = Parser::new("enum Hello { ONE }");
-        let def = p.parse_enum().unwrap();
-        assert_eq!(&*def.ident, "Hello");
-        assert_eq!(def.variants.len(), 1);
-        assert_eq!(&*def.variants[0], "ONE");
-    }
-
-    #[test]
-    fn parse_empty_service() {
-        let mut p = Parser::new("service Flock {}");
-        let def = p.parse_service().unwrap();
-        assert_eq!(&*def.ident, "Flock");
-        assert_eq!(def.methods.len(), 0);
-    }
-
-    #[test]
-    fn parse_method_service() {
-        let mut p = Parser::new("service Flock {
-                                    void ping();
-                                }");
-        let def = p.parse_service().unwrap();
-        assert_eq!(&*def.ident, "Flock");
-        assert_eq!(def.methods.len(), 1);
-        assert_eq!(&*def.methods[0].ident, "ping");
-        assert_eq!(def.methods[0].ty, Ty::Void);
-        assert_eq!(def.methods[0].oneway, false);
-        assert_eq!(def.methods[0].args.len(), 0);
-    }
-
-    #[test]
-    fn parse_method_with_one_args_service() {
-        let mut p = Parser::new("service Beans {
-                                    void poutine(1: string firstName);
-                                }");
-        let def = p.parse_service().unwrap();
-        assert_eq!(&*def.ident, "Beans");
-        assert_eq!(def.methods.len(), 1);
-        assert_eq!(&*def.methods[0].ident, "poutine");
-        assert_eq!(def.methods[0].ty, Ty::Void);
-        assert_eq!(def.methods[0].oneway, false);
-        assert_eq!(def.methods[0].args.len(), 1);
-        assert_eq!(def.methods[0].args[0], StructField {
-            optional: false,
-            seq: 1,
-            ty: Ty::String,
-            ident: "firstName".to_string()
-        });
-    }
-
-    #[test]
-    fn parse_oneway_method_service() {
-        let mut p = Parser::new("service Flock {
-                                    oneway void ping();
-                                }");
-        let def = p.parse_service().unwrap();
-        assert_eq!(&*def.ident, "Flock");
-        assert_eq!(def.methods.len(), 1);
-        assert_eq!(&*def.methods[0].ident, "ping");
-        assert!(def.methods[0].ty == Ty::Void);
-        assert_eq!(def.methods[0].oneway, true);
-        assert_eq!(def.methods[0].args.len(), 0);
-    }
-
-    #[test]
-    fn parse_multi_variant_enum() {
-        let mut p = Parser::new("enum Hello { ONE, TWO }");
-        let def = p.parse_enum().unwrap();
-        assert_eq!(&*def.ident, "Hello");
-        assert_eq!(def.variants.len(), 2);
-        assert_eq!(&*def.variants[0], "ONE");
-        assert_eq!(&*def.variants[1], "TWO");
-    }
-
-    #[test]
-    fn parse_empty_struct() {
-        let mut p = Parser::new("struct FooBar {}");
-        let def = p.parse_struct().unwrap();
-        assert_eq!(&*def.ident, "FooBar");
-        assert_eq!(def.fields.len(), 0);
-    }
-
-    #[test]
-    fn parse_struct_w_field() {
-        let mut p = Parser::new("struct FooBar { 1: required i32 mycat }");
-        let def = p.parse_struct().unwrap();
-        assert_eq!(&*def.ident, "FooBar");
-        assert_eq!(def.fields.len(), 1);
-    }
-
-    #[test]
-    fn parse_struct_w_multi_field() {
-        let mut p = Parser::new("struct FooBar { 1: required i32 mycat; 2: required i32 two }");
-        let def = p.parse_struct().unwrap();
-        assert_eq!(&*def.ident, "FooBar");
-        assert_eq!(def.fields.len(), 2);
-    }
-
-    #[test]
-    fn parse_struct_field_optional() {
-        let mut p = Parser::new("1: optional i32 foobar");
-        let def = p.parse_struct_field().unwrap();
-        assert_eq!(&*def.ident, "foobar");
-        assert_eq!(def.ty, Ty::I32);
-        assert_eq!(def.seq, 1);
-        assert_eq!(def.optional, true);
-    }
-
-    #[test]
-    fn parse_struct_field_required() {
-        let mut p = Parser::new("1: required i32 foobar");
-        let def = p.parse_struct_field().unwrap();
-        assert_eq!(&*def.ident, "foobar");
-        assert_eq!(def.ty, Ty::I32);
-        assert_eq!(def.seq, 1);
-        assert_eq!(def.optional, false);
-    }
-}
+        ), || format!("{}{}", h, t)));
+named!(list_separator, alt!(tag!(",") | tag!(";")));
