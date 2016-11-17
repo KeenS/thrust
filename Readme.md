@@ -6,7 +6,7 @@ UNDER DEVELOPMENT, NOT READY TO USE
 * [ ] `const`
 * [x] `typedef`
 * [x] `struct` (`optional` is not supported yet)
-* [ ] `enum` (`VARIANT = n` is not supported yet)
+* [x] `enum` (`VARIANT = n` is not supported yet)
 * [ ] `union`
 * [ ] `exception`
 * [x] `service` (`optional` is not supported yet)

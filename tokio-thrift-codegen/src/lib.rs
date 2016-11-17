@@ -85,11 +85,13 @@ fn helper_ty_expr(_: &Context,
     let rendered = param.value().render();
     let ty = Ty::from(rendered);
     let expr = match ty {
-        Ty::String => "de.deserialize_str()",
-        Ty::I32 => "de.deserialize_i32()",
-        Ty::I16 => "de.deserialize_i16()",
-        Ty::I64 => "de.deserialize_i64()",
-        Ty::Bool => "de.deserialize_bool()",
+        Ty::String => "de.deserialize_str()".to_string(),
+        Ty::I32 => "de.deserialize_i32()".to_string(),
+        Ty::I16 => "de.deserialize_i16()".to_string(),
+        Ty::I64 => "de.deserialize_i64()".to_string(),
+        Ty::Bool => "de.deserialize_bool()".to_string(),
+        Ty::Ident(s) => format!("{}::deserialize(de)", s) ,
+        Ty::Void => "".to_string(),
         _ => panic!("Unexpected type to deserialize_arg: {:?}.", ty),
     };
     rc.writer.write(expr.as_bytes())?;

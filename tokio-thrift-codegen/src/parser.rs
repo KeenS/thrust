@@ -98,21 +98,22 @@ impl Encodable for Ty {
 }
 
 impl Ty {
-    pub fn to_protocol(&self) -> &'static str {
+    pub fn to_protocol(&self) -> String {
         match self {
-            &Ty::String => "ThriftType::String",
-            &Ty::Void => "ThriftType::Void",
-            &Ty::Bool => "ThriftType::Bool",
-            &Ty::Byte => "ThriftType::Byte",
-            &Ty::Double => "ThriftType::Double",
-            &Ty::I16 => "ThriftType::I16",
-            &Ty::I32 => "ThriftType::I32",
-            &Ty::I64 => "ThriftType::I64",
-            &Ty::Map(_, _) => "ThriftType::Map",
-            &Ty::List(_) => "ThriftType::List",
-            &Ty::Set(_) => "ThriftType::Set",
-            &Ty::Binary => "ThriftType::List",
-            _ => panic!("Not compatible with ThriftType")
+            &Ty::String => "ThriftType::String".to_string(),
+            &Ty::Void => "ThriftType::Void".to_string(),
+            &Ty::Bool => "ThriftType::Bool".to_string(),
+            &Ty::Byte => "ThriftType::Byte".to_string(),
+            &Ty::Double => "ThriftType::Double".to_string(),
+            &Ty::I16 => "ThriftType::I16".to_string(),
+            &Ty::I32 => "ThriftType::I32".to_string(),
+            &Ty::I64 => "ThriftType::I64".to_string(),
+            &Ty::Map(_, _) => "ThriftType::Map".to_string(),
+            &Ty::List(_) => "ThriftType::List".to_string(),
+            &Ty::Set(_) => "ThriftType::Set".to_string(),
+            &Ty::Binary => "ThriftType::List".to_string(),
+            &Ty::Ident(ref s) => s.to_string(),
+            t => panic!("Not compatible with ThriftType: {:?}", t)
         }
     }
 

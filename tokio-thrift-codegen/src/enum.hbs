@@ -4,3 +4,23 @@ pub enum {{enum.ident}} {
     {{variant}} = {{@index}},
     {{~/each}}
 }
+
+
+
+impl Serialize for {{enum.ident}} {
+    fn serialize<S>(&self, s: &mut S) -> Result<(), Error>
+        where S: Serializer + ThriftSerializer
+    {
+        try!(<&self as u32>.serialize(s));
+        Ok(())
+    }
+}
+
+impl Deserialize for {{enum.ident}} {
+    fn deserialize<D>(de: &mut D) -> Result<Self, Error>
+        where D: Deserializer + ThriftDeserializer,
+    {
+        let args = try!(de.deserialize_i32());
+        Ok(args)
+    }
+}
