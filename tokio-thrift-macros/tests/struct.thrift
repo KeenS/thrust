@@ -1,4 +1,4 @@
-namespace rust thrift_struct;
+namespace rust thrift_struct
 
 
 struct Foo {

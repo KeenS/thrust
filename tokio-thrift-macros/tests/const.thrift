@@ -1,4 +1,4 @@
-namespace rust thrift_const;
+namespace rust thrift_const
 /// thrift don't supports boolean constants?
 // const bool   A = 0;
 // const bool   B = 1;

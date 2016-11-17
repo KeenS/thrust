@@ -14,7 +14,7 @@ use syntax::{ast, ptr};
 use syntax::parse::{self, token, new_parser_from_source_str};
 use syntax::util::small_vector::SmallVector;
 use rustc_plugin::Registry;
-use tokio_thrift_codegen::parser::Parser;
+use tokio_thrift_codegen::parser::parse;
 use tokio_thrift_codegen::{compile, find_rust_namespace};
 use std::io::{Write, Read};
 use std::fs::File;
@@ -33,10 +33,12 @@ macro_rules! panictry {
 fn codegen<'cx>(cx: &'cx mut ExtCtxt, text: String, file: String)
         -> Box<MacResult + 'cx> {
     let mut output = Vec::new();
-    let mut tparser = Parser::new(&text);
-    let ns = find_rust_namespace(&mut tparser).expect("cannot find namespace");
+    let doc = parse(&text)
+        .expect("failed to parse thrift file")
+        .expect("EOF while parsing thrift file");
+    let ns = find_rust_namespace(&doc).expect("cannot find namespace");
     output.write_all(format!("mod {} {{", ns.module).as_ref()).expect("internal error failed to write the vec");
-    compile(&mut tparser, &mut output).expect("failed to generate code");
+    compile(&doc, &mut output).expect("failed to generate code");
     output.write_all(format!("}}").as_ref()).expect("internal error failed to write the vec");
     let output = match std::str::from_utf8(&output) {
         Ok(s) => s,

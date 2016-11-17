@@ -1,4 +1,4 @@
-namespace rust thrift_enum;
+namespace rust thrift_enum
 
 enum Foo {
   FOO;
