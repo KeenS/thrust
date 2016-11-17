@@ -165,9 +165,9 @@ pub struct Service {
 
 #[derive(Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub struct ServiceMethod {
+    pub oneway: bool,
     pub ident: String,
     pub ty: Ty,
-    pub attr: FieldAttribute,
     pub args: Vec<StructField>
 }
 
@@ -184,16 +184,9 @@ pub struct Struct {
 }
 
 #[derive(Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
-pub enum FieldAttribute {
-    Optional,
-    Required,
-    Oneway
-}
-
-#[derive(Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub struct StructField {
     pub seq: i16,
-    pub attr: FieldAttribute,
+    pub optional: bool,
     pub ty: Ty,
     pub ident: String
 }
@@ -333,10 +326,10 @@ impl<'a> Parser<'a> {
 
         self.expect(&Token::Colon)?;
 
-        let attr = if self.eat_keyword(Keyword::Optional) {
-            FieldAttribute::Optional
+        let optional = if self.eat_keyword(Keyword::Optional) {
+            true
         } else if self.eat_keyword(Keyword::Required) {
-            FieldAttribute::Required
+            false
         } else {
             return Err(Error::MissingFieldAttribute);
         };
@@ -345,8 +338,8 @@ impl<'a> Parser<'a> {
         let ident = self.parse_ident()?;
 
         Ok(StructField {
+            optional: optional,
             seq: seq as i16,
-            attr: attr,
             ty: ty,
             ident: ident
         })
@@ -451,11 +444,10 @@ impl<'a> Parser<'a> {
             }
 
             // Try and eat a keyword
-            let method_attr = if self.eat_keyword(Keyword::Oneway) {
-                FieldAttribute::Oneway
+            let oneway = if self.eat_keyword(Keyword::Oneway) {
+                true
             } else {
-                // This is mostly ignored, we just need some sort of value here.
-                FieldAttribute::Required
+                false
             };
 
             let method_ty = self.parse_ty()?;
@@ -475,8 +467,8 @@ impl<'a> Parser<'a> {
                 let field_ident = self.parse_ident()?;
 
                 method_fields.push(StructField {
+                    optional: false,
                     seq: seq as i16,
-                    attr: FieldAttribute::Required,
                     ty: field_ty,
                     ident: field_ident
                 });
@@ -491,9 +483,9 @@ impl<'a> Parser<'a> {
             }
 
             methods.push(ServiceMethod {
+                oneway: oneway,
                 ident: method_ident,
                 ty: method_ty,
-                attr: method_attr,
                 args: method_fields
             });
 
@@ -1076,7 +1068,7 @@ mod tests {
         assert_eq!(def.methods.len(), 1);
         assert_eq!(&*def.methods[0].ident, "ping");
         assert_eq!(def.methods[0].ty, Ty::Void);
-        assert_eq!(def.methods[0].attr, FieldAttribute::Required);
+        assert_eq!(def.methods[0].oneway, false);
         assert_eq!(def.methods[0].args.len(), 0);
     }
 
@@ -1090,11 +1082,11 @@ mod tests {
         assert_eq!(def.methods.len(), 1);
         assert_eq!(&*def.methods[0].ident, "poutine");
         assert_eq!(def.methods[0].ty, Ty::Void);
-        assert_eq!(def.methods[0].attr, FieldAttribute::Required);
+        assert_eq!(def.methods[0].oneway, false);
         assert_eq!(def.methods[0].args.len(), 1);
         assert_eq!(def.methods[0].args[0], StructField {
+            optional: false,
             seq: 1,
-            attr: FieldAttribute::Required,
             ty: Ty::String,
             ident: "firstName".to_string()
         });
@@ -1110,7 +1102,7 @@ mod tests {
         assert_eq!(def.methods.len(), 1);
         assert_eq!(&*def.methods[0].ident, "ping");
         assert!(def.methods[0].ty == Ty::Void);
-        assert_eq!(def.methods[0].attr, FieldAttribute::Oneway);
+        assert_eq!(def.methods[0].oneway, true);
         assert_eq!(def.methods[0].args.len(), 0);
     }
 
@@ -1155,7 +1147,7 @@ mod tests {
         assert_eq!(&*def.ident, "foobar");
         assert_eq!(def.ty, Ty::I32);
         assert_eq!(def.seq, 1);
-        assert_eq!(def.attr, FieldAttribute::Optional);
+        assert_eq!(def.optional, true);
     }
 
     #[test]
@@ -1165,6 +1157,6 @@ mod tests {
         assert_eq!(&*def.ident, "foobar");
         assert_eq!(def.ty, Ty::I32);
         assert_eq!(def.seq, 1);
-        assert_eq!(def.attr, FieldAttribute::Required);
+        assert_eq!(def.optional, false);
     }
 }

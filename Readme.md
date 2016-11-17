@@ -3,7 +3,7 @@ A fork project of [thehydroimpulse/thrust: Thrift RPC in Rust (Async I/O) http:/
 # Status
 UNDER DEVELOPMENT, NOT READY TO USE
 
-## Thrift Support
+## Thrift IDL Support
 ### Types
 
 * [x] `bool`
@@ -24,7 +24,7 @@ UNDER DEVELOPMENT, NOT READY TO USE
 
 * [ ] `int`
 * [ ] `double`
-* [ ] `literal`
+* [x] `literal`
 * [ ] `list`
 * [ ] `map`
 
@@ -33,11 +33,11 @@ UNDER DEVELOPMENT, NOT READY TO USE
 
 * [x] `namespace`
 * [ ] `include`
-* [ ] `const`
+* [x] `const` (see [Constants](#Constants) for concrete literal)
 * [x] `typedef`
 * [x] `struct`
   + [x] `required`
-  + [ ] `optional`
+  + [x] `optional`
 * [x] `enum`
   + [ ] `VARIANT = n`
 * [ ] `union`
@@ -49,7 +49,7 @@ UNDER DEVELOPMENT, NOT READY TO USE
     - [x] `void`
     - [ ] `throws`
     - [x] `required`
-    - [ ] `optional`
+    - [x] `optional`
 
 and at `service` , exception handling is not so matured that the server may hung when it received corrupted data.
 

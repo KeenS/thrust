@@ -114,7 +114,6 @@ fn helper_ty_expr(_: &Context,
         Ty::I64 => "de.deserialize_i64()".to_string(),
         Ty::Bool => "de.deserialize_bool()".to_string(),
         Ty::Ident(s) => format!("{}::deserialize(de)", s) ,
-        Ty::Void => "".to_string(),
         _ => panic!("Unexpected type to deserialize_arg: {:?}.", ty),
     };
     rc.writer.write(expr.as_bytes())?;
@@ -191,6 +190,7 @@ fn gen_struct(parser: &mut Parser, data: &mut BTreeMap<String, Json>, wr: &mut W
         .and_then(|s| Json::from_str(&s).ok())
         .expect("internal error");
     data.insert("struct".to_string(), json);
+    println!("{:?}", data);
     write!(wr, "{}", handlebars.render("struct", data)?)?;
     Ok(())
 }

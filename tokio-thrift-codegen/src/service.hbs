@@ -109,7 +109,11 @@ impl Serialize for {{service.ident}}ServiceMethodReturn {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct {{../service.ident}}{{method.ident}}Args {
     {{~#each method.args as |arg|}}
+    {{#if field.optional ~}}
+    pub {{arg.ident}}: Option<{{to_rust arg.ty}}>,
+    {{~^~}}
     pub {{arg.ident}}: {{to_rust arg.ty}},
+    {{~/if~}}
     {{~/each}}
 }
 {{/each ~}}
@@ -121,10 +125,18 @@ impl Serialize for {{../service.ident}}{{method.ident}}Args {
     {
         try!(s.write_struct_begin("{{../service.ident}}_{{method.ident}}_Args"));
         {{#each method.args as |arg|~}}
+        {{#if field.optional~}}
+        if self.{{arg.ident}}.is_some() {
+            try!(s.write_field_begin("{{arg.ident}}", {{to_protocol arg.ty}}, {{arg.seq}}));
+            try!(self.{{arg.ident}}.serialize(s));
+            try!(s.write_field_end());
+        }
+        {{~^~}}
         try!(s.write_field_begin("{{arg.ident}}", {{to_protocol arg.ty}}, {{arg.seq}}));
         try!(self.{{arg.ident}}.serialize(s));
         try!(s.write_field_end());
-        {{~/each}}
+        {{/if}}
+        {{~/each~}}
         try!(s.write_field_stop());
         try!(s.write_struct_end());
         Ok(())
@@ -164,7 +176,11 @@ impl Deserialize for {{../service.ident}}{{method.ident}}Args {
         try!(de.read_struct_end());
         let args = {{../service.ident}}{{method.ident}}Args {
             {{#each args as |arg|~}}
+            {{#if field.optional ~}}
+            {{arg.ident}}: {{arg.ident}},
+            {{~^~}}
             {{arg.ident}}: {{arg.ident}}.unwrap(),
+            {{/if}}
             {{~/each}}
         };
         Ok(args)
