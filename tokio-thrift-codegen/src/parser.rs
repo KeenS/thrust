@@ -1,8 +1,7 @@
 extern crate rustc_serialize;
 use rustc_serialize::{Decodable, Encodable, Decoder, Encoder};
-use std::char;
 use std::str::from_utf8;
-use nom::{alpha, digit, multispace, IResult, Err};
+use nom::{alpha, digit, multispace, eof, IResult, Err};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Ty {
@@ -285,8 +284,10 @@ pub fn parse(input: &str) -> Result<Option<Document>, Err<&[u8], u32>> {
 
 
 named!(document <Document>, chain!(
-    headers: separated_list!(multispace, header) ~ multispace ~
-        defs: separated_list!(multispace, definition),
+    headers: many0!(chain!(multispace? ~ h: header, || h)) ~
+        multispace? ~
+        defs:  many0!(chain!(d: definition ~ multispace?, || d)) ~
+        eof,
     || Document {
         headers: headers,
         definitions: defs,
@@ -323,10 +324,10 @@ named!(definition <Definition>, alt!(
 named!(const_ <Const>, chain!(
     tag!("const") ~ multispace ~
         ty: field_type ~ multispace ~
-        id: identifier ~ multispace ~
-        tag!("=") ~ multispace ~
-        value: const_value ~
-        opt!(multispace) ~ opt!(list_separator),
+        id: identifier ~ multispace? ~
+        tag!("=") ~ multispace? ~
+        value: const_value ~ multispace? ~
+        list_separator?,
     || Const {
         ident: id,
         ty: ty,
@@ -344,22 +345,20 @@ named!(typedef <Typedef>, chain!(
 
 named!(enum_ <Enum>, chain!(
     tag!("enum") ~ multispace ~
-        id: identifier ~ multispace ~
-        variants: delimited!(
-            tag!("{"),
-            separated_list!(
-                multispace,
-                chain!(
-                    variant: identifier ~
-                        index: chain!(
-                            multispace? ~
-                                tag!("=") ~
-                                multispace? ~
-                                idx: int_constant, || idx)? ~
-                        multispace ~
-                        list_separator,
-                    || (variant, index))),
-            tag!("}")),
+        id: identifier ~ multispace? ~
+        tag!("{") ~ multispace? ~
+        variants: many0!(chain!(
+            variant: identifier ~
+                index: chain!(
+                    multispace? ~
+                        tag!("=") ~
+                        multispace? ~
+                        idx: int_constant, || idx)? ~
+                multispace? ~
+                list_separator? ~
+                multispace? ,
+            || (variant, index))) ~
+            tag!("}"),
     || Enum{
         ident: id,
         variants: variants,
@@ -367,17 +366,22 @@ named!(enum_ <Enum>, chain!(
 
 named!(struct_ <Struct>, chain!(
     tag!("struct") ~ multispace ~
-        id: identifier ~ multispace ~
-        tag!("{") ~ multispace ~
-        fields: many0!(field) ~
+        id: identifier ~ multispace? ~
+        tag!("{") ~
+        fields: many0!(chain!(multispace? ~ f: field, || f)) ~
+        multispace? ~
         tag!("}") ,
     || Struct {
         ident: id,
         fields: fields,
     }));
+
 named!(union <Union>, chain!(
-    tag!("union")  ~ id: identifier ~  tag!("{") ~
-        fields: many0!(field) ~
+    tag!("union") ~ multispace ~
+        id: identifier ~ multispace? ~
+        tag!("{") ~
+        fields: many0!(chain!(multispace? ~ f: field, || f)) ~
+        multispace? ~
         tag!("}") ,
     || Union {
         ident: id,
@@ -385,8 +389,11 @@ named!(union <Union>, chain!(
     }));
 
 named!(exception <Exception>, chain!(
-    tag!("exception")  ~ id: identifier ~  tag!("{") ~
-        fields: many0!(field) ~
+    tag!("exception") ~ multispace ~
+        id: identifier ~ multispace? ~
+        tag!("{") ~
+        fields: many0!(chain!(multispace? ~ f: field, || f)) ~
+        multispace? ~
         tag!("}") ,
     || Exception {
         ident: id,
@@ -394,63 +401,83 @@ named!(exception <Exception>, chain!(
     }));
 
 named!(service <Service>, chain!(
-    tag!("service")  ~ id: identifier ~
-        ext: chain!(tag!("extends") ~ exid: identifier, || exid)? ~
-        tag!("{") ~
-        functions: many0!(function) ~
+    tag!("service")  ~ multispace ~
+        id: identifier ~ multispace? ~
+        // ext: chain!(tag!("extends") ~ multispace ~
+        //             exid: identifier, || exid)? ~
+        // multispace? ~
+        tag!("{") ~ multispace? ~
+        functions: many0!(chain!(f: function ~ multispace?, || f)) ~
         tag!("}") ,
     || Service{
-        extends: ext,
+        extends: None,
+//        extends: ext,
         ident: id,
         methods: functions,
     }));
 
 named!(field <StructField>, chain!(
-    idx: field_id? ~
-        req: field_req? ~
-        ty: field_type ~
-        id: identifier ~
-        value: chain!(tag!("=")? ~ v: const_value, || v)? ~
-        list_separator?,
+    idx: chain!(idx: field_id ~  multispace?, || idx)? ~
+        req: chain!(req: field_req ~ multispace, || req)? ~
+        ty: field_type ~ multispace ~
+        id: identifier ~ multispace? ~
+        value: chain!(tag!("=") ~ multispace? ~
+                      v: const_value, || v)? ~
+        ignore_: list_separator?
+        ,
     || StructField {
         seq: idx,
-        optional: req.unwrap_or(false),
+       optional: req.unwrap_or(false),
         ty: ty,
         ident: id,
+//        value: None,
         value: value,
     }));
 
-named!(field_id <i64>, chain!(id: int_constant ~ tag!(":"), || id));
+named!(field_id <i64>, chain!(id: int_constant ~ multispace? ~ tag!(":"), || id));
 
 named!(field_req <bool>, alt!(
     tag!("required") => {|_| false}|
     tag!("optional") => {|_| true}));
 
 named!(function <ServiceMethod>, chain!(
-    oneway: tag!("oneway")? ~
-        ty: function_type ~
-        id: identifier ~
-        tag!("(") ~ args: many0!(field) ~ tag!(")") ~
-        throws? ~
-        list_separator?,
-    || ServiceMethod{
-        oneway: oneway.is_some(),
-        ident: id,
-        ty: ty,
-        args: args}));
+    oneway: chain!(tag!("oneway") ~ multispace?, ||())? ~
+        ty: function_type ~ multispace ~
+        id: identifier ~ multispace? ~
+        tag!("(") ~ multispace? ~
+        args: many0!(chain!(f: field ~ multispace?, || f)) ~
+        tag!(")")  ~
+//        throws: chain!(multispace? ~ throws, || throws)? ~
+        chain!(multispace? ~ list_separator, ||())?
+        ,
+    || {
+        let oneway = oneway.is_some();
+        if oneway && ty != Ty::Void {
+            // TODO return erorr
+            panic!("oneway method must return void");
+        };
+        ServiceMethod{
+            oneway: oneway,
+            ident: id,
+            ty: ty,
+            args: args,
+        }}));
 
 named!(function_type <Ty>, alt!(
-    field_type |
-    tag!("void") => {|_| Ty::Void}));
+    tag!("void") => {|_| Ty::Void} |
+    field_type));
 
 named!(throws <Throws>, chain!(
-    tag!("throws") ~ fields: many0!(field),
+    tag!("throws") ~ multispace? ~
+        tag!("(") ~ multispace? ~
+        fields: many0!(chain!(f: field ~ multispace?, || f)) ~
+        tag!(")"),
     || Throws{fields: fields}));
 
 named!(field_type <Ty>, alt!(
-    identifier => {|i| Ty::Ident(i)} |
     base_type |
-    container_type));
+    container_type |
+    identifier => {|i| Ty::Ident(i)}));
 
 named!(definition_type <Ty>, alt!(
     base_type |
@@ -470,15 +497,26 @@ named!(base_type <Ty>, alt!(
 named!(container_type <Ty>, alt!(map_type | set_type | list_type));
 
 named!(map_type <Ty>, chain!(
-    tag!("map") ~ tag!("<") ~ k: field_type ~ tag!(",") ~ v: field_type ~ tag!(">"),
+    tag!("map") ~ multispace? ~
+        tag!("<") ~ multispace? ~
+        k: field_type ~ multispace? ~
+        tag!(",") ~ multispace? ~
+        v: field_type ~ multispace? ~
+        tag!(">"),
     || Ty::Map(Box::new(k), Box::new(v))));
 
 named!(set_type <Ty>, chain!(
-    tag!("set") ~ tag!("<") ~ v: field_type ~ tag!(">"),
+    tag!("set") ~ multispace? ~
+        tag!("<")  ~ multispace? ~
+        v: field_type ~ multispace?
+    ~ tag!(">"),
     || Ty::Set(Box::new(v))));
 
 named!(list_type <Ty>, chain!(
-    tag!("list") ~ tag!("<") ~ v: field_type ~ tag!(">"),
+    tag!("list") ~ multispace? ~
+        tag!("<")  ~ multispace? ~
+        v: field_type ~ multispace?
+    ~ tag!(">"),
     || Ty::List(Box::new(v))));
 
 named!(const_value <ConstValue>, alt!(
@@ -493,11 +531,12 @@ named!(int_constant <i64>, chain!
        (sgn: sgn? ~ n: map_res!(digit, from_utf8),
         || sgn.unwrap_or(1) * n.parse::<i64>().unwrap()));
 
+// buggy
 named!(double_constant <f64>, chain!(
     sgn: sgn? ~
         n: map!(digit, |d| from_utf8(d).expect("invalid utf8").parse::<i64>().unwrap()) ~
         frac: chain!(tag!(".") ~ f: digit, || f)? ~
-        pow: chain!(alt!(tag!("E") | tag!("e")) ~ p: int_constant, || p) ?
+        pow: chain!(alt!(tag!("E") | tag!("e")) ~ p: int_constant, || p)?
     , || {
         let sgn = sgn.unwrap_or(1) as f64;
         let n = n as f64;
@@ -524,29 +563,92 @@ named!(const_map <ConstValue>, chain!(
         tag!("}"),
     || ConstValue::Map));
 
+
 named!(literal <String>, map_res!(alt!(
     chain!(tag!("\"") ~ s: is_not!("\"") ~ tag!("\""), || s) |
     chain!(tag!("'")  ~ s: is_not!("'")  ~ tag!("'") , || s)),
-                                  |s| from_utf8(s).map(|s| s.to_string())));
+                                  |v| from_utf8(v).map(|s| s.to_string())));
+
+fn cat_vec(vs: Vec<&[u8]>) -> Vec<u8> {
+    let mut ret = Vec::new();
+    for v in vs {
+        ret.extend_from_slice(v);
+    }
+    ret
+}
 
 named!(identifier <String>, chain!(
     h: map_res!(alt!(alpha | tag!("_")), from_utf8) ~
-        t: map!(many0!(
-            map_res!(alt!(
-                alpha | digit |
-                tag!(".") | tag!("_")),
-                     from_utf8)),
-                |vs| {
-                    let mut s = String::new();
-                    for v in vs {
-                        s += v
-                    };
-                    s
-                }),
+        t: map_res!(many0!(
+            alt!(
+                alpha |
+                digit |
+                is_a!("._"))),
+                    |vs| from_utf8(&cat_vec(vs)).map(|s|s.to_string())),
     || format!("{}{}", h, t)));
 
 named!(list_separator, alt!(tag!(",") | tag!(";")));
 
+
+#[test]
+fn test_document() {
+    assert_eq!(document(b"include \"foo.thrift\"").unwrap().1,
+               Document{
+                   headers: vec![Header::Include(Include {path: "foo.thrift".to_string()})],
+                   definitions: vec![]}
+    );
+
+    assert_eq!(document(b"const i32 foo = 1;").unwrap().1,
+               Document{
+                   headers: vec![],
+                   definitions: vec![Definition::Const(Const {ident: "foo".to_string(), ty: Ty::I32, value: ConstValue::Int(1)})]}
+    );
+
+    println!("{:?}", document(b"
+include \"foo.thrift\"
+
+const i32 foo = 1;
+
+struct Foo {}"));
+
+    assert_eq!(document(b"
+include \"foo.thrift\"
+
+const i32 foo = 1;
+
+struct Foo {}
+
+").unwrap().1,
+               Document{
+                   headers: vec![Header::Include(Include {path: "foo.thrift".to_string()})],
+                   definitions: vec![Definition::Const(Const {ident: "foo".to_string(), ty: Ty::I32, value: ConstValue::Int(1)}),
+                                     Definition::Struct(Struct {ident: "Foo".to_string(), fields: vec![],})]}
+    );
+
+
+}
+
+
+#[test]
+fn test_header() {
+    assert_eq!(header(b"include \"foo.thrift\"").unwrap().1,
+               Header::Include(Include {path: "foo.thrift".to_string()})
+    );
+
+    assert_eq!(header(b"namespace rust aaaa").unwrap().1,
+               Header::Namespace(Namespace {
+                   lang: "rust".to_string(),
+                   module: "aaaa".to_string(),
+               }));
+
+}
+
+#[test]
+fn test_include() {
+    assert_eq!(include(b"include \"foo.thrift\"").unwrap().1,
+               Include {path: "foo.thrift".to_string()}
+    );
+}
 
 #[test]
 fn test_namespace() {
@@ -559,6 +661,643 @@ fn test_namespace() {
         lang: "ruby".to_string(),
         module: "Aaa".to_string(),
     });
+}
+
+#[test]
+fn test_definition() {
+    assert_eq!(definition(b"const i32 foo = 1;").unwrap().1,
+               Definition::Const(Const {ident: "foo".to_string(), ty: Ty::I32, value: ConstValue::Int(1)})
+    );
+
+    assert_eq!(definition(b"typedef string foo").unwrap().1,
+               Definition::Typedef(Typedef {ty: Ty::String, ident: "foo".to_string()}));
+
+    assert_eq!(definition(b"enum Foo {}").unwrap().1,
+               Definition::Enum(Enum {
+                   ident: "Foo".to_string(),
+                   variants: vec![],
+               }));
+
+    assert_eq!(definition(b"struct Foo {}").unwrap().1,
+               Definition::Struct(Struct {
+                   ident: "Foo".to_string(),
+                   fields: vec![],
+               }));
+
+    assert_eq!(definition(b"union Foo {}").unwrap().1,
+               Definition::Union(Union {
+                   ident: "Foo".to_string(),
+                   fields: vec![],
+               }));
+
+    assert_eq!(definition(b"exception Foo {}").unwrap().1,
+               Definition::Exception(Exception {
+                   ident: "Foo".to_string(),
+                   fields: vec![],
+               }));
+    assert_eq!(definition(b"service Foo {} ").unwrap().1,
+               Definition::Service(Service {
+                   extends: None,
+                   ident: "Foo".to_string(),
+                   methods: vec![],
+               }));
+
+}
+
+#[test]
+fn test_const() {
+    assert_eq!(const_(b"const i32 foo = 1;").unwrap().1,
+               Const {ident: "foo".to_string(), ty: Ty::I32, value: ConstValue::Int(1)}
+    );
+    assert_eq!(const_(b"const i32 foo = 1,").unwrap().1,
+               Const {ident: "foo".to_string(), ty: Ty::I32, value: ConstValue::Int(1)}
+    );
+}
+
+
+#[test]
+fn test_typedef() {
+    assert_eq!(typedef(b"typedef string foo").unwrap().1,
+               Typedef {ty: Ty::String, ident: "foo".to_string()});
+}
+
+
+#[test]
+fn test_enum() {
+    assert_eq!(enum_(b"enum Foo {}").unwrap().1,
+               Enum {
+                   ident: "Foo".to_string(),
+                   variants: vec![],
+               });
+
+    assert_eq!(enum_(b"enum Foo {
+foo
+}").unwrap().1,
+               Enum {
+                   ident: "Foo".to_string(),
+                   variants: vec![("foo".to_string(), None)]
+               });
+
+    assert_eq!(enum_(b"enum Foo {
+foo
+}").unwrap().1,
+               Enum {
+                   ident: "Foo".to_string(),
+                   variants: vec![("foo".to_string(), None)]
+               });
+
+    assert_eq!(enum_(b"enum Foo {
+foo
+bar
+}").unwrap().1,
+               Enum {
+                   ident: "Foo".to_string(),
+                   variants: vec![("foo".to_string(), None),
+                                  ("bar".to_string(), None)
+                   ]
+               });
+
+    assert_eq!(enum_(b"enum Foo {
+foo,
+bar,
+}").unwrap().1,
+               Enum {
+                   ident: "Foo".to_string(),
+                   variants: vec![("foo".to_string(), None),
+                                  ("bar".to_string(), None)
+                   ]
+               });
+    assert_eq!(enum_(b"enum Foo {
+foo;
+bar;
+}").unwrap().1,
+               Enum {
+                   ident: "Foo".to_string(),
+                   variants: vec![("foo".to_string(), None),
+                                  ("bar".to_string(), None)
+                   ]
+               });
+}
+
+
+#[test]
+fn test_struct() {
+    assert_eq!(struct_(b"struct Foo {}").unwrap().1,
+               Struct {
+                   ident: "Foo".to_string(),
+                   fields: vec![],
+               });
+
+    assert_eq!(struct_(b"struct Foo {1: required string foo}").unwrap().1,
+               Struct {
+                   ident: "Foo".to_string(),
+                   fields: vec![
+                       StructField {
+                           seq: Some(1),
+                           optional: false,
+                           ident: "foo".to_string(),
+                           ty: Ty::String,
+                           value: None,
+                       }],
+               });
+}
+
+#[test]
+fn test_union() {
+    assert_eq!(union(b"union Foo {}").unwrap().1,
+               Union {
+                   ident: "Foo".to_string(),
+                   fields: vec![],
+               });
+
+    assert_eq!(union(b"union Foo {1: required string foo}").unwrap().1,
+               Union {
+                   ident: "Foo".to_string(),
+                   fields: vec![
+                       StructField {
+                           seq: Some(1),
+                           optional: false,
+                           ident: "foo".to_string(),
+                           ty: Ty::String,
+                           value: None,
+                       }],
+               });
+}
+
+
+#[test]
+fn test_exception() {
+    assert_eq!(exception(b"exception Foo {}").unwrap().1,
+               Exception{
+                   ident: "Foo".to_string(),
+                   fields: vec![],
+               });
+
+    assert_eq!(exception(b"exception Foo {1: required string foo}").unwrap().1,
+               Exception{
+                   ident: "Foo".to_string(),
+                   fields: vec![
+                       StructField {
+                           seq: Some(1),
+                           optional: false,
+                           ident: "foo".to_string(),
+                           ty: Ty::String,
+                           value: None,
+                       }],
+               });
+}
+
+#[test]
+fn test_service() {
+    assert_eq!(service(b"service Foo {
+}
+").unwrap().1, Service {
+extends: None,
+ident: "Foo".to_string(),
+methods: vec![],
+});
+
+    assert_eq!(service(b"service Foo {
+void foo(),
+}
+").unwrap().1, Service {
+extends: None,
+ident: "Foo".to_string(),
+methods: vec![
+    ServiceMethod {
+        oneway: false,
+        ident: "foo".to_string(),
+        ty: Ty::Void,
+        args: vec![],
+    }
+],
+});
+
+    assert_eq!(service(b"service Foo {
+void foo();
+}
+").unwrap().1, Service {
+extends: None,
+ident: "Foo".to_string(),
+methods: vec![
+    ServiceMethod {
+        oneway: false,
+        ident: "foo".to_string(),
+        ty: Ty::Void,
+        args: vec![],
+    }
+],
+});
+
+    assert_eq!(service(b"service Foo {
+void foo()
+void bar()
+}
+").unwrap().1, Service {
+extends: None,
+ident: "Foo".to_string(),
+methods: vec![
+    ServiceMethod {
+        oneway: false,
+        ident: "foo".to_string(),
+        ty: Ty::Void,
+        args: vec![],
+    },
+    ServiceMethod {
+        oneway: false,
+        ident: "bar".to_string(),
+        ty: Ty::Void,
+        args: vec![],
+    }
+],
+});
+
+    assert_eq!(service(b"service Foo {
+void foo();
+void bar();
+}
+").unwrap().1, Service {
+extends: None,
+ident: "Foo".to_string(),
+methods: vec![
+    ServiceMethod {
+        oneway: false,
+        ident: "foo".to_string(),
+        ty: Ty::Void,
+        args: vec![],
+    },
+    ServiceMethod {
+        oneway: false,
+        ident: "bar".to_string(),
+        ty: Ty::Void,
+        args: vec![],
+    }
+],
+});
+
+    assert_eq!(service(b"service Foo {
+void foo(),
+void bar(),
+}
+").unwrap().1, Service {
+extends: None,
+ident: "Foo".to_string(),
+methods: vec![
+    ServiceMethod {
+        oneway: false,
+        ident: "foo".to_string(),
+        ty: Ty::Void,
+        args: vec![],
+    },
+    ServiceMethod {
+        oneway: false,
+        ident: "bar".to_string(),
+        ty: Ty::Void,
+        args: vec![],
+    }
+],
+});
+
+}
+
+#[test]
+fn test_field() {
+    assert_eq!(field(b"string foo").unwrap().1,
+               StructField {seq: None,
+                            optional: false,
+                            ident: "foo".to_string(),
+                            ty: Ty::String,
+                            value: None,});
+
+
+    assert_eq!(field(b"1: string foo").unwrap().1,
+               StructField {seq: Some(1),
+                            optional: false,
+                            ident: "foo".to_string(),
+                            ty: Ty::String,
+                            value: None,});
+    assert_eq!(field(b"1: i32 foo").unwrap().1,
+               StructField {seq: Some(1),
+                            optional: false,
+                            ident: "foo".to_string(),
+                            ty: Ty::String,
+                            value: None,});
+    assert_eq!(field(b"1: i32 foo = 3;").unwrap().1,
+               StructField {seq: Some(1),
+                            optional: false,
+                            ident: "foo".to_string(),
+                            ty: Ty::I32,
+                            value: Some(ConstValue::Int(3)),});
+    assert_eq!(field(b"2: required set<binary> foo,").unwrap().1,
+               StructField {seq: Some(2),
+                            optional: false,
+                            ident: "foo".to_string(),
+                            ty: Ty::Set(Box::new(Ty::Binary)),
+                            value: None,});
+    assert_eq!(field(b"3: optional string foo;").unwrap().1,
+               StructField {seq: Some(3),
+                            optional: true,
+                            ident: "foo".to_string(),
+                            ty: Ty::String,
+                            value: None,});
+
+}
+
+#[test]
+fn test_field_id() {
+    assert_eq!(field_id(b"1:").unwrap().1, 1);
+    assert_eq!(field_id(b"1 :").unwrap().1, 1);
+}
+
+#[test]
+fn test_field_req() {
+    assert_eq!(field_req(b"required").unwrap().1, false);
+    assert_eq!(field_req(b"optional").unwrap().1, true);
+}
+
+#[test]
+fn test_function() {
+    assert_eq!(function(b"i32 foo()").unwrap().1,
+               ServiceMethod {
+                   oneway: false,
+                   ident: "foo".to_string(),
+                   ty: Ty::I32,
+                   args: vec![]
+               });
+
+    assert_eq!(function(b"i32 foo(1: string bar)").unwrap().1,
+               ServiceMethod {
+                   oneway: false,
+                   ident: "foo".to_string(),
+                   ty: Ty::I32,
+                   args: vec![
+                       StructField {
+                           seq: Some(1),
+                           optional: false,
+                           ident: "bar".to_string(),
+                           ty: Ty::String,
+                           value: None,
+                       },
+                   ]
+               });
+    assert_eq!(function(b"i32 foo(1: required string bar)").unwrap().1,
+               ServiceMethod {
+                   oneway: false,
+                   ident: "foo".to_string(),
+                   ty: Ty::I32,
+                   args: vec![
+                       StructField {
+                           seq: Some(1),
+                           optional: false,
+                           ident: "bar".to_string(),
+                           ty: Ty::String,
+                           value: None,
+                       },
+                   ]
+               });
+    assert_eq!(function(b"void foo(1: required string bar),").unwrap().1,
+               ServiceMethod {
+                   oneway: false,
+                   ident: "foo".to_string(),
+                   ty: Ty::Void,
+                   args: vec![
+                       StructField {
+                           seq: Some(1),
+                           optional: false,
+                           ident: "bar".to_string(),
+                           ty: Ty::String,
+                           value: None,
+                       },
+                   ]
+               });
+    assert_eq!(function(b"oneway void foo(1: required string bar);").unwrap().1,
+               ServiceMethod {
+                   oneway: true,
+                   ident: "foo".to_string(),
+                   ty: Ty::Void,
+                   args: vec![
+                       StructField {
+                           seq: Some(1),
+                           optional: false,
+                           ident: "bar".to_string(),
+                           ty: Ty::String,
+                           value: None,
+                       },
+                   ]
+               });
+    assert_eq!(function(b"i32 foo(1: required string bar; optional binary baz)").unwrap().1,
+               ServiceMethod {
+                   oneway: false,
+                   ident: "foo".to_string(),
+                   ty: Ty::I32,
+                   args: vec![
+                       StructField {
+                           seq: Some(1),
+                           optional: false,
+                           ident: "bar".to_string(),
+                           ty: Ty::String,
+                           value: None,
+                       },
+                       StructField {
+                           seq: None,
+                           optional: true,
+                           ident: "baz".to_string(),
+                           ty: Ty::Binary,
+                           value: None,
+                       },
+                   ]
+               });
+    assert_eq!(function(b"i32 foo(1: required string bar, 2: optional binary baz)").unwrap().1,
+               ServiceMethod {
+                   oneway: false,
+                   ident: "foo".to_string(),
+                   ty: Ty::I32,
+                   args: vec![
+                       StructField {
+                           seq: Some(1),
+                           optional: false,
+                           ident: "bar".to_string(),
+                           ty: Ty::String,
+                           value: None,
+                       },
+                       StructField {
+                           seq: Some(2),
+                           optional: true,
+                           ident: "baz".to_string(),
+                           ty: Ty::Binary,
+                           value: None,
+                       },
+                   ]
+               });
+    // assert_eq!(function(b"i32 foo(1: required string bar) throws (1: list<i32> pee)").unwrap().1,
+    //            ServiceMethod {
+    //                oneway: false,
+    //                ident: "foo".to_string(),
+    //                ty: Ty::I32,
+    //                args: vec![
+    //                    StructField {
+    //                        seq: Some(1),
+    //                        optional: false,
+    //                        ident: "bar".to_string(),
+    //                        ty: Ty::String,
+    //                        value: None,
+    //                    },
+    //                    StructField {
+    //                        seq: Some(2),
+    //                        optional: true,
+    //                        ident: "baz".to_string(),
+    //                        ty: Ty::Binary,
+    //                        value: None,
+    //                    },
+    //                ]
+    //            });
+    // assert_eq!(function(b"i32 foo(1: required string bar) throws (1: list<i32> pee, 2: optional set<byte> poo),").unwrap().1);
+}
+
+#[test]
+#[should_panic]
+fn test_function_err() {
+    function(b"oneway binary foo(1: required string bar);").unwrap() ;
+
+}
+
+#[test]
+fn test_function_type() {
+    assert_eq!(function_type(b"void").unwrap().1, Ty::Void);
+    assert_eq!(function_type(b"list<i32>").unwrap().1, Ty::List(Box::new(Ty::I32)));
+    // wicked but legal according to formal definition
+    assert_eq!(function_type(b"list<void>").unwrap().1, Ty::List(Box::new(Ty::Ident("void".to_string()))));
+}
+
+#[test]
+fn test_throws() {
+    assert_eq!(throws(b"throws(1: string foo)").unwrap().1, Throws {
+        fields: vec![StructField {seq: Some(1),
+                                  optional: false,
+                                  ident: "foo".to_string(),
+                                  ty: Ty::String,
+                                  value: None,}]
+    });
+    assert_eq!(throws(b"throws( 1: string foo )").unwrap().1, Throws {
+        fields: vec![StructField {seq: Some(1),
+                                  optional: false,
+                                  ident: "foo".to_string(),
+                                  ty: Ty::String,
+                                  value: None,}]
+    });
+    assert_eq!(throws(b"throws(1: string foo, 2: optional i32 bar)").unwrap().1, Throws {
+        fields: vec![StructField {seq: Some(1),
+                                  optional: false,
+                                  ident: "foo".to_string(),
+                                  ty: Ty::String,
+                                  value: None,},
+                     StructField {seq: Some(2),
+                                  optional: true,
+                                  ident: "bar".to_string(),
+                                  ty: Ty::I32,
+                                  value: None,}]
+    });
+}
+
+#[test]
+fn test_field_type() {
+    assert_eq!(field_type(b"i8").unwrap().1, Ty::I8);
+    assert_eq!(field_type(b"list < i32 >").unwrap().1, Ty::List(Box::new(Ty::I32)));
+    assert_eq!(field_type(b"aaaa").unwrap().1, Ty::Ident("aaaa".to_string()));
+}
+
+#[test]
+fn test_definition_type() {
+    assert_eq!(definition_type(b"i8").unwrap().1, Ty::I8);
+    assert_eq!(definition_type(b"list < i32 >").unwrap().1, Ty::List(Box::new(Ty::I32)));
+}
+
+#[test]
+fn test_base_type() {
+    assert_eq!(base_type(b"bool").unwrap().1, Ty::Bool);
+    assert_eq!(base_type(b"byte").unwrap().1, Ty::Byte);
+    assert_eq!(base_type(b"i8").unwrap().1, Ty::I8);
+    assert_eq!(base_type(b"i16").unwrap().1, Ty::I16);
+    assert_eq!(base_type(b"i32").unwrap().1, Ty::I32);
+    assert_eq!(base_type(b"i64").unwrap().1, Ty::I64);
+    assert_eq!(base_type(b"double").unwrap().1, Ty::Double);
+    assert_eq!(base_type(b"string").unwrap().1, Ty::String);
+    assert_eq!(base_type(b"binary").unwrap().1, Ty::Binary);
+}
+
+#[test]
+fn test_container_type() {
+    assert_eq!(container_type(b"map<i32, bool>").unwrap().1, Ty::Map(Box::new(Ty::I32), Box::new(Ty::Bool)));
+    assert_eq!(container_type(b"map < i32 , string >").unwrap().1, Ty::Map(Box::new(Ty::I32), Box::new(Ty::String)));
+    assert_eq!(container_type(b"map<map<i32, bool>, map<bool, i32>>").unwrap().1,
+               Ty::Map(Box::new(Ty::Map(Box::new(Ty::I32), Box::new(Ty::Bool))),
+                       Box::new(Ty::Map(Box::new(Ty::Bool), Box::new(Ty::I32)))));
+    assert_eq!(container_type(b"set<i32>").unwrap().1, Ty::Set(Box::new(Ty::I32)));
+    assert_eq!(container_type(b"set < i32 >").unwrap().1, Ty::Set(Box::new(Ty::I32)));
+    assert_eq!(container_type(b"set<set<i32>>").unwrap().1, Ty::Set(Box::new(Ty::Set(Box::new(Ty::I32)))));
+    assert_eq!(container_type(b"list<i32>").unwrap().1, Ty::List(Box::new(Ty::I32)));
+    assert_eq!(container_type(b"list < i32 >").unwrap().1, Ty::List(Box::new(Ty::I32)));
+    assert_eq!(container_type(b"list<list<i32>>").unwrap().1, Ty::List(Box::new(Ty::List(Box::new(Ty::I32)))));
+}
+
+#[test]
+fn test_map_type() {
+    assert_eq!(map_type(b"map<i32, bool>").unwrap().1, Ty::Map(Box::new(Ty::I32), Box::new(Ty::Bool)));
+    assert_eq!(map_type(b"map < i32 , string >").unwrap().1, Ty::Map(Box::new(Ty::I32), Box::new(Ty::String)));
+    assert_eq!(map_type(b"map<map<i32, bool>, map<bool, i32>>").unwrap().1,
+               Ty::Map(Box::new(Ty::Map(Box::new(Ty::I32), Box::new(Ty::Bool))),
+                       Box::new(Ty::Map(Box::new(Ty::Bool), Box::new(Ty::I32)))));
+}
+
+
+
+#[test]
+fn test_set_type() {
+    assert_eq!(set_type(b"set<i32>").unwrap().1, Ty::Set(Box::new(Ty::I32)));
+    assert_eq!(set_type(b"set < i32 >").unwrap().1, Ty::Set(Box::new(Ty::I32)));
+    assert_eq!(set_type(b"set<set<i32>>").unwrap().1, Ty::Set(Box::new(Ty::Set(Box::new(Ty::I32)))));
+}
+
+
+#[test]
+fn test_list_type() {
+    assert_eq!(list_type(b"list<i32>").unwrap().1, Ty::List(Box::new(Ty::I32)));
+    assert_eq!(list_type(b"list < i32 >").unwrap().1, Ty::List(Box::new(Ty::I32)));
+    assert_eq!(list_type(b"list<list<i32>>").unwrap().1, Ty::List(Box::new(Ty::List(Box::new(Ty::I32)))));
+}
+
+#[test]
+fn test_const_value() {
+    assert_eq!(const_value(b"1").unwrap().1, ConstValue::Int(1));
+    assert_eq!(const_value(b"-1").unwrap().1, ConstValue::Int(-1));
+    // assert_eq!(const_value(b"1.0").unwrap().1, ConstValue::Double(1.0));
+    // assert_eq!(const_value(b"-1.01").unwrap().1, ConstValue::Double(-1.01));
+    assert_eq!(const_value(b"'aaa'").unwrap().1, ConstValue::String("aaa".to_string()));
+    assert_eq!(const_value(b"\"aaa\"").unwrap().1, ConstValue::String("aaa".to_string()));
+}
+
+#[test]
+fn test_int_constant() {
+    assert_eq!(int_constant(b"1").unwrap().1,  1);
+    assert_eq!(int_constant(b"-10").unwrap().1, -10);
+
+}
+
+#[ignore]
+#[test]
+fn test_double_constant() {
+    println!("{:?}", double_constant(b"1.0"));
+    assert_eq!(double_constant(b"1.0").unwrap().1,  1.0);
+    assert_eq!(double_constant(b"-0.01").unwrap().1, -0.01);
+    assert_eq!(double_constant(b"-1.0e-2").unwrap().1, -0.01);
+
+}
+
+
+#[test]
+fn test_literal() {
+    assert_eq!(literal(b"\"literal\"").unwrap().1, "literal".to_string());
+    assert_eq!(literal(b"'literal'").unwrap().1, "literal".to_string());
 }
 
 
