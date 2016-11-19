@@ -1,6 +1,7 @@
 extern crate rustc_serialize;
 use rustc_serialize::{Decodable, Encodable, Decoder, Encoder};
-use std::char;
+use std::str::from_utf8;
+use nom::{alpha, digit, multispace, eof, IResult, Err};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Ty {
@@ -9,6 +10,7 @@ pub enum Ty {
     Byte,
     Bool,
     Binary,
+    I8,
     I16,
     I32,
     I64,
@@ -16,7 +18,6 @@ pub enum Ty {
     List(Box<Ty>),
     Set(Box<Ty>),
     Map(Box<Ty>, Box<Ty>),
-    Option(Box<Ty>),
     // User-defined type.
     Ident(String)
 }
@@ -29,10 +30,12 @@ impl From<String> for Ty {
             "byte" => Ty::Byte,
             "bool" => Ty::Bool,
             "binary" => Ty::Binary,
+            "i8" => Ty::I8,
             "i16" => Ty::I16,
             "i32" => Ty::I32,
             "i64" => Ty::I64,
             "double" => Ty::Double,
+            // TODO: ignore or implement list, set and map
             _ => Ty::Ident(val)
         }
     }
@@ -54,23 +57,24 @@ impl Encodable for Ty {
                 &Byte => s.emit_enum_variant("byte", 2, 0, |_| Ok(())),
                 &Bool => s.emit_enum_variant("bool", 3, 0, |_| Ok(())),
                 &Binary => s.emit_enum_variant("binary", 4, 0, |_| Ok(())),
-                &I16 => s.emit_enum_variant("i16", 5, 0, |_| Ok(())),
-                &I32 => s.emit_enum_variant("i32", 6, 0, |_| Ok(())),
-                &I64 => s.emit_enum_variant("i64", 7, 0, |_| Ok(())),
+                &I8  => s.emit_enum_variant("i8", 5, 0, |_| Ok(())),
+                &I16 => s.emit_enum_variant("i16", 6, 0, |_| Ok(())),
+                &I32 => s.emit_enum_variant("i32", 7, 0, |_| Ok(())),
+                &I64 => s.emit_enum_variant("i64", 8, 0, |_| Ok(())),
                 &Double => s.emit_enum_variant("double", 8, 0, |_| Ok(())),
-                &List(ref ty) => s.emit_enum_variant("list", 9, 1, |s| {
+                &List(ref ty) => s.emit_enum_variant("list", 10, 1, |s| {
                     try!(s.emit_enum_variant_arg(0, |s| {
                         ty.encode(s)
                     }));
                     Ok(())
                 }),
-                &Set(ref ty) => s.emit_enum_variant("set", 10, 1, |s| {
+                &Set(ref ty) => s.emit_enum_variant("set", 11, 1, |s| {
                     try!(s.emit_enum_variant_arg(0, |s| {
                         ty.encode(s)
                     }));
                     Ok(())
                 }),
-                &Map(ref kty, ref vty) => s.emit_enum_variant("map", 11, 1, |s| {
+                &Map(ref kty, ref vty) => s.emit_enum_variant("map", 12, 1, |s| {
                     try!(s.emit_enum_variant_arg(0, |s| {
                         kty.encode(s)
                     }));
@@ -79,14 +83,8 @@ impl Encodable for Ty {
                     }));
                     Ok(())
                 }),
-                &Option(ref ty) => s.emit_enum_variant("option", 12, 1, |s| {
-                    try!(s.emit_enum_variant_arg(0, |s| {
-                        ty.encode(s)
-                    }));
-                    Ok(())
-                }),
                 // User-defined type.
-                &Ident(ref string) => s.emit_enum_variant("ident", 13, 1, |s| {
+                &Ident(ref string) => s.emit_enum_variant("ident", 14, 1, |s| {
                     try!(s.emit_enum_variant_arg(0, |s| {
                         s.emit_str(&string)
                     }));
@@ -124,14 +122,11 @@ impl Ty {
             &Ty::Byte => "u8".to_string(),
             &Ty::Bool => "bool".to_string(),
             &Ty::Binary => "Vec<i8>".to_string(),
+            &Ty::I8 => "i8".to_string(),
             &Ty::I16 => "i16".to_string(),
             &Ty::I32 => "i32".to_string(),
             &Ty::I64 => "i64".to_string(),
             &Ty::Double => "double".to_string(),
-            &Ty::Option(ref t) => {
-                let inner = t.to_string();
-                format!("Option<{}>", inner)
-            },
             &Ty::List(ref s) => {
                 let inner = s.to_string();
                 format!("Vec<{}>", inner)
@@ -152,47 +147,97 @@ impl Ty {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
+pub struct Document {
+    pub headers: Vec<Header>,
+    pub definitions: Vec<Definition>,
+}
+
+#[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
+pub enum Header {
+    Include(Include),
+    Namespace(Namespace),
+}
+
+#[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
+pub enum Definition {
+    Const(Const),
+    Typedef(Typedef),
+    Enum(Enum),
+    Struct(Struct),
+    Union(Union),
+    Exception(Exception),
+    Service(Service),
+}
+
+#[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Include {
-    pub path: String
+    pub path: String,
 }
 
-#[derive(Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Service {
+    pub extends: Option<String>,
     pub ident: String,
-    pub methods: Vec<ServiceMethod>
+    pub methods: Vec<ServiceMethod>,
 }
 
-#[derive(Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct ServiceMethod {
     pub oneway: bool,
     pub ident: String,
     pub ty: Ty,
-    pub args: Vec<StructField>
+    pub args: Vec<StructField>,
+    pub throws: Option<Vec<StructField>>,
 }
 
-#[derive(Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Enum {
     pub ident: String,
-    pub variants: Vec<String>
+    pub variants: Vec<Variant>,
 }
 
-#[derive(Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+
+#[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
+pub struct Variant {
+    pub ident: String,
+    pub seq: Option<i64>,
+}
+
+
+#[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
+pub struct Union {
+    pub ident: String,
+    pub fields: Vec<StructField>,
+}
+
+
+#[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Struct {
     pub ident: String,
-    pub fields: Vec<StructField>
+    pub fields: Vec<StructField>,
 }
 
-#[derive(Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
+pub struct Exception {
+    pub ident: String,
+    pub fields: Vec<StructField>,
+}
+
+#[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct StructField {
-    pub seq: i16,
+    pub seq: Option<i64>,
     pub optional: bool,
     pub ty: Ty,
-    pub ident: String
+    pub ident: String,
+    pub value: Option<ConstValue>,
 }
 
-#[derive(Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
-pub struct Typedef(pub Ty, pub String);
+#[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
+pub struct Typedef {
+    pub ty: Ty,
+    pub ident: String,
+}
 
 #[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Const {
@@ -206,991 +251,1173 @@ pub enum ConstValue {
     Int(i64),
     Double(f64),
     String(String),
-    // not yet
-    List,
+    List(Vec<ConstValue>),
     // not yet
     Map,
 }
 
 
-#[derive(Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Namespace {
     pub lang: String,
-    pub module: String
+    pub module: String,
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
-pub enum Keyword {
-    Struct,
-    Service,
-    Enum,
-    Namespace,
-    Required,
-    Optional,
-    Oneway,
-    Typedef,
-    Throws,
-    Exception,
-    Include,
-    Const,
-}
-
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
-pub enum Token {
-    Eq,
-    Colon,
-    SingleQuote,
-    Dot,
-    Semi,
-    At,
-    Comma,
-    LCurly,
-    RCurly,
-    LAngle,
-    RAngle,
-    LParen,
-    RParen,
-    Number(i64),
-    QuotedString(String),
-    Ident(String),
-    Keyword(Keyword),
-
-    /// Useless comments.
-    Comment,
-    Whitespace,
-    Eof,
-    B,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub enum Error {
-    Expected,
-    MissingFieldAttribute,
-    ExpectedNumber,
-    ExpectedConstValue,
-    ExpectedString,
-    ExpectedKeyword(Keyword),
-    ExpectedIdent,
-    ExpectedToken(Token),
-    NoMoreItems
-}
-
-#[derive(Debug)]
-pub struct Parser<'a> {
-    buffer: &'a str,
-    pos: usize,
-    pub token: Token,
-    last_token_eof: bool
-}
-
-impl<'a> Parser<'a> {
-    pub fn new(input: &'a str) -> Parser<'a> {
-        Parser {
-            buffer: input,
-            pos: 0,
-            token: Token::B,
-            last_token_eof: false
+impl Document {
+    pub fn parse(input: &str) -> Result<Option<Self>, Err<&[u8], u32>> {
+        match document(input.as_bytes()) {
+            IResult::Done(i, d) => {
+                println!("{}", from_utf8(i).unwrap());
+                Ok(Some(d))
+            },
+            IResult::Incomplete(_) => Ok(None),
+            IResult::Error(e) => Err(e),
         }
     }
 
-    pub fn parse_struct(&mut self) -> Result<Struct, Error> {
-        self.expect_keyword(Keyword::Struct)?;
-
-        let ident = self.expect_ident()?;
-        let mut fields = Vec::new();
-
-        self.expect(&Token::LCurly)?;
-
-        loop {
-            if self.eat(&Token::RCurly) {
-                break;
-            }
-
-            fields.push(self.parse_struct_field()?);
-
-            if self.eat_separator() {
-                continue;
-            } else {
-                break;
-            }
-        }
-
-        Ok(Struct {
-            ident: ident,
-            fields: fields
-        })
+    pub fn rearrange(&mut self) {
+        // resolve `include`, field id, oneway and void, warn about unsupported feature and so on.
     }
+}
 
-    pub fn parse_struct_field(&mut self) -> Result<StructField, Error> {
-        let seq = self.parse_number()?;
 
-        self.expect(&Token::Colon)?;
+named!(document <Document>, chain!(
+    blank? ~
+        headers: many0!(chain!(h: header ~ blank?, || h)) ~
+        defs:  many0!(chain!(d: definition ~ blank?, || d)) ~
+        eof
+        ,
+    || Document {
+        headers: headers,
+        definitions: defs,
+    }));
 
-        let optional = if self.eat_keyword(Keyword::Optional) {
-            true
-        } else if self.eat_keyword(Keyword::Required) {
-            false
-        } else {
-            return Err(Error::MissingFieldAttribute);
-        };
+named!(header <Header>, alt!(
+    include    => {Header::Include} |
+    namespace  => {Header::Namespace}));
 
-        let ty = self.parse_ty()?;
-        let ident = self.parse_ident()?;
+named!(include <Include>, chain!(
+    tag!("include") ~ blank ~
+        file: literal,
+    || Include{
+        path: file,
+    }));
 
-        Ok(StructField {
-            optional: optional,
-            seq: seq as i16,
+named!(namespace <Namespace>, chain!(
+    tag!("namespace") ~ blank ~
+        lang: identifier ~ blank ~
+        ns: identifier,
+    || Namespace{
+        lang: lang,
+        module: ns,
+    }));
+named!(definition <Definition>, alt!(
+    const_    => {Definition::Const}|
+    typedef   => {Definition::Typedef}|
+    enum_     => {Definition::Enum}|
+    struct_   => {Definition::Struct}|
+    union     => {Definition::Union}|
+    exception => {Definition::Exception}|
+    service   => {Definition::Service}));
+
+named!(const_ <Const>, chain!(
+    tag!("const") ~ blank ~
+        ty: field_type ~ blank ~
+        id: identifier ~ blank? ~
+        tag!("=") ~ blank? ~
+        value: const_value ~ blank? ~
+        list_separator?,
+    || Const {
+        ident: id,
+        ty: ty,
+        value: value,
+    }));
+
+named!(typedef <Typedef>, chain!(
+    tag!("typedef") ~ blank ~
+        ty: definition_type ~ blank ~
+        id: identifier,
+    || Typedef{
+        ty: ty,
+        ident: id,
+    }));
+
+named!(enum_ <Enum>, chain!(
+    tag!("enum") ~ blank ~
+        id: identifier ~ blank? ~
+        tag!("{") ~ blank? ~
+        variants: many0!(chain!(
+            variant: identifier ~
+                index: chain!(
+                    blank? ~
+                        tag!("=") ~
+                        blank? ~
+                        idx: int_constant, || idx)? ~
+                blank? ~
+                list_separator? ~
+                blank? ,
+            || Variant{ident: variant, seq: index})) ~
+            tag!("}"),
+    || Enum{
+        ident: id,
+        variants: variants,
+    }));
+
+named!(struct_ <Struct>, chain!(
+    tag!("struct") ~ blank ~
+        id: identifier ~ blank? ~
+        tag!("{") ~
+        fields: many0!(chain!(blank? ~ f: field, || f)) ~
+        blank? ~
+        tag!("}") ,
+    || Struct {
+        ident: id,
+        fields: fields,
+    }));
+
+named!(union <Union>, chain!(
+    tag!("union") ~ blank ~
+        id: identifier ~ blank? ~
+        tag!("{") ~
+        fields: many0!(chain!(blank? ~ f: field, || f)) ~
+        blank? ~
+        tag!("}") ,
+    || Union {
+        ident: id,
+        fields: fields,
+    }));
+
+named!(exception <Exception>, chain!(
+    tag!("exception") ~ blank ~
+        id: identifier ~ blank? ~
+        tag!("{") ~
+        fields: many0!(chain!(blank? ~ f: field, || f)) ~
+        blank? ~
+        tag!("}") ,
+    || Exception {
+        ident: id,
+        fields: fields,
+    }));
+
+named!(service <Service>, chain!(
+    tag!("service")  ~ blank ~
+        id: identifier ~ blank? ~
+        ext: chain!(tag!("extends") ~ blank ~
+                    exid: identifier, || exid)? ~
+        blank? ~
+        tag!("{") ~ blank? ~
+        functions: many0!(chain!(f: function ~ blank?, || f)) ~
+        tag!("}") ,
+    || Service{
+        extends: ext,
+        ident: id,
+        methods: functions,
+    }));
+
+named!(field <StructField>, chain!(
+    idx: chain!(idx: field_id ~  blank?, || idx)? ~
+        req: chain!(req: field_req ~ blank, || req)? ~
+        ty: field_type ~ blank ~
+        id: identifier ~ blank? ~
+        value: chain!(tag!("=") ~ blank? ~
+                      v: const_value, || v)? ~
+        list_separator?
+        ,
+    || StructField {
+        seq: idx,
+       optional: req.unwrap_or(false),
+        ty: ty,
+        ident: id,
+//        value: None,
+        value: value,
+    }));
+
+named!(field_id <i64>, chain!(id: int_constant ~ blank? ~ tag!(":"), || id));
+
+named!(field_req <bool>, alt!(
+    tag!("required") => {|_| false}|
+    tag!("optional") => {|_| true}));
+
+named!(function <ServiceMethod>, chain!(
+    oneway: chain!(tag!("oneway") ~ blank?, ||())? ~
+        ty: function_type ~ blank ~
+        id: identifier ~ blank? ~
+        tag!("(") ~ blank? ~
+        args: many0!(chain!(f: field ~ blank?, || f)) ~
+        tag!(")")  ~
+        throws: chain!(blank? ~ th: throws, || th)? ~
+        chain!(blank? ~ list_separator, ||())?
+        ,
+    || {
+        let oneway = oneway.is_some();
+        ServiceMethod{
+            oneway: oneway,
+            ident: id,
             ty: ty,
-            ident: ident
-        })
+            args: args,
+            throws: throws,
+        }}));
+
+named!(function_type <Ty>, alt!(
+    tag!("void") => {|_| Ty::Void} |
+    field_type));
+
+named!(throws < Vec<StructField> >, chain!(
+    tag!("throws") ~ blank? ~
+        tag!("(") ~ blank? ~
+        fields: many0!(chain!(f: field ~ blank?, || f)) ~
+        tag!(")"),
+    || fields));
+
+named!(field_type <Ty>, alt!(
+    base_type |
+    container_type |
+    identifier => {|i| Ty::Ident(i)}));
+
+named!(definition_type <Ty>, alt!(
+    base_type |
+    container_type));
+
+named!(base_type <Ty>, alt!(
+    tag!("bool")   => {|_| Ty::Bool} |
+    tag!("byte")   => {|_| Ty::Byte} |
+    tag!("i8")     => {|_| Ty::I8} |
+    tag!("i16")    => {|_| Ty::I16} |
+    tag!("i32")    => {|_| Ty::I32} |
+    tag!("i64")    => {|_| Ty::I64} |
+    tag!("double") => {|_| Ty::Double} |
+    tag!("string") => {|_| Ty::String} |
+    tag!("binary") => {|_| Ty::Binary}));
+
+named!(container_type <Ty>, alt!(map_type | set_type | list_type));
+
+named!(map_type <Ty>, chain!(
+    tag!("map") ~ blank? ~
+        tag!("<") ~ blank? ~
+        k: field_type ~ blank? ~
+        tag!(",") ~ blank? ~
+        v: field_type ~ blank? ~
+        tag!(">"),
+    || Ty::Map(Box::new(k), Box::new(v))));
+
+named!(set_type <Ty>, chain!(
+    tag!("set") ~ blank? ~
+        tag!("<")  ~ blank? ~
+        v: field_type ~ blank?
+    ~ tag!(">"),
+    || Ty::Set(Box::new(v))));
+
+named!(list_type <Ty>, chain!(
+    tag!("list") ~ blank? ~
+        tag!("<")  ~ blank? ~
+        v: field_type ~ blank?
+    ~ tag!(">"),
+    || Ty::List(Box::new(v))));
+
+named!(const_value <ConstValue>, alt!(
+    double_constant => {ConstValue::Double} |
+    int_constant    => {ConstValue::Int} |
+    literal         => {ConstValue::String} |
+    identifier      => {|_| panic!("identifier not supported")} |
+    const_list |
+    const_map));
+
+named!(int_constant <i64>, chain!
+       (sgn: sgn? ~ n: map_res!(digit, from_utf8),
+        || format!("{}{}", sgn.unwrap_or(""), n).parse::<i64>().unwrap()));
+
+// buggy
+named!(double_constant <f64>, chain!(
+    // frac exists
+    sgn: sgn? ~
+        n: map_res!(digit, from_utf8) ~
+        fp: alt!(chain!(tag!(".") ~
+                        frac: map_res!(digit, from_utf8) ~
+                        pow: chain!(alt!(tag!("E") | tag!("e")) ~ p: int_constant, || p)?
+                        ,
+                        || (Some(frac), pow))
+                 |
+                 chain!(
+                     // frac doesn't exist
+                     alt!(tag!("E") | tag!("e")) ~
+                         pow: int_constant,
+                     || (None, Some(pow))))
+    , || {
+        let sgn = sgn.unwrap_or("");
+        let (frac, pow) = fp;
+        let frac = frac.unwrap_or("0");
+        let pow = pow.map(|i| format!("e{}", i)).unwrap_or("".to_string());
+        let f = format!("{}{}.{}{}", sgn, n, frac, pow).parse::<f64>().expect("internal error: failed to parse double literal internally");
+        f
+    }));
+
+named!(sgn <&str>, map_res!(alt!(tag!("+") | tag!("-")), from_utf8));
+
+named!(const_list <ConstValue>, chain!(
+    tag!("[") ~ blank? ~
+        vs: many0!(chain!(
+            v: const_value ~ blank? ~
+                list_separator? ~ blank?, || v)) ~
+        tag!("]"),
+    || ConstValue::List(vs)));
+
+named!(const_map <ConstValue>, chain!(
+    tag!("{") ~ blank? ~
+        vs: many0!(chain!(
+            k: const_value ~ blank? ~
+                tag!(":") ~  blank? ~
+                v: const_value ~ blank? ~
+                list_separator? ~ blank?, || v)) ~
+        tag!("}"),
+    || ConstValue::Map));
+
+
+named!(literal <String>, map_res!(alt!(
+    chain!(tag!("\"") ~ s: is_not!("\"") ~ tag!("\""), || s) |
+    chain!(tag!("'")  ~ s: is_not!("'")  ~ tag!("'") , || s)),
+                                  |v| from_utf8(v).map(|s| s.to_string())));
+
+fn cat_vec(vs: Vec<&[u8]>) -> Vec<u8> {
+    let mut ret = Vec::new();
+    for v in vs {
+        ret.extend_from_slice(v);
     }
-
-    pub fn parse_number(&mut self) -> Result<i64, Error> {
-        self.skip_b();
-
-        let n = match self.token {
-            Token::Number(n) => n,
-            _ => return Err(Error::ExpectedNumber)
-        };
-
-        self.bump();
-        Ok(n)
-    }
-
-    pub fn skip_b(&mut self) {
-        if self.token == Token::B {
-            self.bump();
-        }
-    }
-
-    pub fn parse_enum(&mut self) -> Result<Enum, Error> {
-        self.expect_keyword(Keyword::Enum)?;
-
-        let ident = self.expect_ident()?;
-        let mut variants = Vec::new();
-
-        self.expect(&Token::LCurly)?;
-
-        loop {
-            if self.eat(&Token::RCurly) {
-                break;
-            }
-
-            variants.push(self.parse_ident()?);
-
-            if self.eat(&Token::Comma) {
-                continue;
-            } else {
-                self.eat(&Token::RCurly);
-                break;
-            }
-        }
-
-        Ok(Enum {
-            ident: ident,
-            variants: variants
-        })
-    }
-
-    pub fn parse_include(&mut self) -> Result<Include, Error> {
-        self.expect_keyword(Keyword::Include)?;
-
-        Ok(Include {
-            path: self.expect_string()?
-        })
-    }
-
-    pub fn parse_typedef(&mut self) -> Result<Typedef, Error> {
-        self.expect_keyword(Keyword::Typedef)?;
-
-        Ok(Typedef(self.parse_ty()?, self.expect_ident()?))
-    }
-
-    pub fn parse_const(&mut self) -> Result<Const, Error> {
-        self.expect_keyword(Keyword::Const)?;
-        let ty = self.parse_ty()?;
-        Ok(Const {
-            ident: self.expect_ident()?,
-            ty: ty.clone(),
-            value: {
-                self.eat(&Token::Eq);
-                self.expect_constvalue(ty.clone())?
-            }
-        })
-    }
-
-    pub fn parse_namespace(&mut self) -> Result<Namespace, Error> {
-        self.expect_keyword(Keyword::Namespace)?;
-
-        let lang = self.expect_ident()?;
-        let module = self.expect_ident()?;
-
-        Ok(Namespace {
-            lang: lang,
-            module: module
-        })
-    }
-
-    pub fn parse_service(&mut self) -> Result<Service, Error> {
-        self.expect_keyword(Keyword::Service)?;
-
-        let mut methods = Vec::new();
-        let ident = self.expect_ident()?;
-        self.expect(&Token::LCurly)?;
-
-        loop {
-            if self.eat(&Token::RCurly) {
-                break;
-            }
-
-            // Try and eat a keyword
-            let oneway = if self.eat_keyword(Keyword::Oneway) {
-                true
-            } else {
-                false
-            };
-
-            let method_ty = self.parse_ty()?;
-            let method_ident = self.parse_ident()?;
-            let mut method_fields = Vec::new();
-
-            self.expect(&Token::LParen)?;
-
-            loop {
-                if self.eat(&Token::RParen) {
-                    break;
-                }
-
-                let seq = self.parse_number()?;
-                self.expect(&Token::Colon)?;
-                let field_ty = self.parse_ty()?;
-                let field_ident = self.parse_ident()?;
-
-                method_fields.push(StructField {
-                    optional: false,
-                    seq: seq as i16,
-                    ty: field_ty,
-                    ident: field_ident
-                });
-
-                if self.eat(&Token::Comma) {
-                    continue;
-                } else if self.eat(&Token::RParen) {
-                    break;
-                } else {
-                    panic!("failed to properly parse the service {:?}", ident);
-                }
-            }
-
-            methods.push(ServiceMethod {
-                oneway: oneway,
-                ident: method_ident,
-                ty: method_ty,
-                args: method_fields
-            });
-
-            if self.eat_separator() {
-                continue;
-            } else {
-                self.eat(&Token::RCurly);
-                break;
-            }
-        }
-
-        Ok(Service {
-            ident: ident,
-            methods: methods
-        })
-    }
-
-    pub fn expect_string(&mut self) -> Result<String, Error> {
-        let val = match self.token {
-            Token::QuotedString(ref s) => s.clone(),
-            _ => return Err(Error::ExpectedString)
-        };
-
-        self.bump();
-        Ok(val)
-    }
-
-    pub fn expect_constvalue(&mut self, ty: Ty) -> Result<ConstValue, Error> {
-        println!("{:?}: {:?}", self.token, ty);
-        let val = match (&self.token, ty) {
-            (&Token::Number(i), Ty::Bool) |
-            (&Token::Number(i), Ty::Byte) |
-            (&Token::Number(i), Ty::I16) |
-            (&Token::Number(i), Ty::I32) |
-            (&Token::Number(i), Ty::I64)
-                => ConstValue::Int(i as i64),
-            (&Token::QuotedString(ref s), Ty::String)
-                => ConstValue::String(s.clone()),
-            _ => return Err(Error::ExpectedConstValue)
-        };
-
-        self.bump();
-        Ok(val)
-    }
-
-    pub fn expect_keyword(&mut self, keyword: Keyword) -> Result<(), Error> {
-        if !self.eat_keyword(keyword) {
-            return Err(Error::ExpectedKeyword(keyword));
-        }
-
-        Ok(())
-    }
-
-    pub fn expect(&mut self, token: &Token) -> Result<Token, Error> {
-        if !self.eat(token) {
-            return Err(Error::ExpectedToken(token.clone()));
-        } else {
-            Ok(self.token.clone())
-        }
-    }
-
-    pub fn parse_ident(&mut self) -> Result<String, Error> {
-        if self.token == Token::B {
-            self.bump();
-        }
-
-        let i = match self.token {
-            Token::Ident(ref s) => s.clone(),
-            _ => return Err(Error::ExpectedIdent)
-        };
-
-        self.bump();
-        Ok(i)
-    }
-
-    pub fn parse_ty(&mut self) -> Result<Ty, Error> {
-        let ident = self.parse_ident()?;
-        // map, set, list
-        if self.eat(&Token::LAngle) {
-            let ty = match &*ident {
-                "map" => {
-                    let a = self.parse_ty()?;
-                    self.expect(&Token::Comma)?;
-                    let b = self.parse_ty()?;
-
-                    Ty::Map(Box::new(a), Box::new(b))
-                },
-                "set" => Ty::Set(Box::new(self.parse_ty()?)),
-                "list" => Ty::List(Box::new(self.parse_ty()?)),
-                _ => panic!("Error!")
-            };
-
-            self.expect(&Token::RAngle)?;
-
-            Ok(ty)
-        } else {
-            Ok(Ty::from(ident))
-        }
-    }
-
-    pub fn expect_ident(&mut self) -> Result<String, Error> {
-        let ident = match self.token {
-            Token::Ident(ref s) => s.clone(),
-            _ => return Err(Error::Expected)
-        };
-
-        self.bump();
-        Ok(ident)
-    }
-
-    pub fn lookahead_keyword(&mut self, keyword: Keyword) -> bool {
-        while vec![Token::Comma, Token::Semi, Token::Comment, Token::Whitespace, Token::B].contains(&self.token) {
-            self.bump();
-        }
-        self.lookahead(&Token::Keyword(keyword))
-    }
-
-    pub fn lookahead(&mut self, token: &Token) -> bool {
-        if self.token == Token::B {
-            self.bump();
-        }
-
-        if self.token == *token {
-            true
-        } else {
-            false
-        }
-    }
-
-    pub fn eat_keyword(&mut self, keyword: Keyword) -> bool {
-        self.eat(&Token::Keyword(keyword))
-    }
-
-    fn next_char(&self) -> char {
-        self.buffer[self.pos..].chars().next().unwrap()
-    }
-
-    fn eof(&self) -> bool {
-        self.pos >= self.buffer.len()
-    }
-
-    fn consume_char(&mut self) -> Option<char> {
-        let mut iter = self.buffer[self.pos..].char_indices();
-        iter.next().map(|(_, cur_char)| {
-            let (next_pos, _) = iter.next().unwrap_or((1, ' '));
-            self.pos += next_pos;
-            cur_char
-        })
-    }
-
-    fn next_token(&mut self) -> Token {
-        if self.eof() {
-            return Token::Eof;
-        }
-
-        let ch = match self.consume_char() {
-            Some(ch) => ch,
-            None => return Token::Eof,
-        };
-
-        match ch {
-            ':' => Token::Colon,
-            '.' => Token::Dot,
-            ';' => Token::Semi,
-            ',' => Token::Comma,
-            '"' => {
-                let val = self.consume_while(|c| c != '"' || c != '\"');
-                match self.consume_char() {
-                    Some(_) => (),
-                    None => return Token::Eof,
-                }
-                Token::QuotedString(val)
-            },
-            '=' => Token::Eq,
-            '(' => Token::LParen,
-            ')' => Token::RParen,
-            '{' => Token::LCurly,
-            '}' => Token::RCurly,
-            '<' => Token::LAngle,
-            '>' => Token::RAngle,
-            '-' => {
-                let mut val = self.consume_while(|c| match c {
-                    '0'...'9' => true,
-                    _ => false
-                });
-                val = format!("-{}", val);
-                Token::Number(val.parse().unwrap())
-
-            }
-            '0'...'9' => {
-                let mut val = self.consume_while(|c| match c {
-                    '0'...'9' => true,
-                    _ => false
-                });
-
-                val = format!("{}{}", ch, val);
-
-                Token::Number(val.parse().unwrap())
-            },
-            '/' | '#' => {
-                if self.next_char() == '/' || ch == '#' {
-                    self.consume_while(|c| c != '\n' && c != '\r');
-                    return Token::Comment
-                } else if self.next_char() == '*' {
-                    match self.consume_char() {
-                        Some(_) => (),
-                        None => return Token::Eof,
-                    }
-                    loop {
-                        self.consume_while(|c| c != '*');
-                        match self.consume_char() {
-                            Some(_) => (),
-                            None => return Token::Eof,
-                        }
-
-
-                        if self.next_char() == '/' {
-                            break;
-                        }
-                    }
-
-                    // Consume the following '/' because we just did a lookahead previously.
-                    match self.consume_char() {
-                        Some(_) => (),
-                        None => return Token::Eof,
-                    }
-
-                    return Token::Comment
-                }
-
-                Token::Eof
-            },
-            c if c.is_whitespace() => {
-                self.consume_whitespace();
-                self.next_token()
-            },
-            // identifier
-            'a'...'z' | 'A'...'Z' | '_' => {
-                let mut ident = self.consume_while(|c| match c {
-                    'a'...'z' => true,
-                    'A'...'Z' => true,
-                    '_' => true,
-                    '0'...'9' => true,
-                    _ => false
-                });
-
-                ident = format!("{}{}", ch, ident);
-
-                match &*ident {
-                    "namespace" => return Token::Keyword(Keyword::Namespace),
-                    "struct" => return Token::Keyword(Keyword::Struct),
-                    "enum" => return Token::Keyword(Keyword::Enum),
-                    "service" => return Token::Keyword(Keyword::Service),
-                    "optional" => return Token::Keyword(Keyword::Optional),
-                    "required" => return Token::Keyword(Keyword::Required),
-                    "throws" => return Token::Keyword(Keyword::Throws),
-                    "oneway" => return Token::Keyword(Keyword::Oneway),
-                    "typedef" => return Token::Keyword(Keyword::Typedef),
-                    "exception" => return Token::Keyword(Keyword::Exception),
-                    "include" => return Token::Keyword(Keyword::Include),
-                    "const" => return Token::Keyword(Keyword::Const),
-                    _ => Token::Ident(ident)
-                }
-            },
-            ch => panic!("unexpected char: {} at {}", ch, self.pos),
-        }
-    }
-
-    pub fn eat_separator(&mut self) -> bool {
-        self.eat(&Token::Semi) || self.eat(&Token::Comma)
-    }
-
-    pub fn eat(&mut self, token: &Token) -> bool {
-        if self.token == Token::B {
-            self.bump();
-        }
-
-        if self.token == *token {
-            self.bump();
-            true
-        } else {
-            false
-        }
-    }
-
-    fn consume_while<F>(&mut self, test: F) -> String
-        where F: Fn(char) -> bool {
-        let mut result = String::new();
-        while !self.eof() && test(self.next_char()) {
-            match self.consume_char() {
-                Some(c) => result.push(c),
-                None => break,
-            }
-        }
-        return result;
-    }
-
-    fn consume_whitespace(&mut self) {
-        self.consume_while(char::is_whitespace);
-    }
-
-    pub fn bump(&mut self) {
-        if self.last_token_eof {
-            panic!("attempted to bump past eof.");
-        }
-
-        if self.token == Token::Eof {
-            self.last_token_eof = true;
-        }
-
-        self.token = self.next_token();
-    }
+    ret
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+named!(identifier <String>, chain!(
+    h: map_res!(alt!(alpha | tag!("_")), from_utf8) ~
+        t: map_res!(many0!(
+            alt!(
+                alpha |
+                digit |
+                is_a!("._"))),
+                    |vs| from_utf8(&cat_vec(vs)).map(|s|s.to_string())),
+    || format!("{}{}", h, t)));
 
-    #[test]
-    fn eof_token() {
-        let mut parser = Parser::new("");
-        assert_eq!(parser.eof(), true);
-        assert_eq!(parser.next_token(), Token::Eof);
-    }
+named!(list_separator, alt!(tag!(",") | tag!(";")));
 
-    #[test]
-    fn colon_token() {
-        let mut parser = Parser::new(":");
-        assert_eq!(parser.next_token(), Token::Colon);
-    }
 
-    #[test]
-    fn dot_token() {
-        let mut parser = Parser::new(".");
-        assert_eq!(parser.next_token(), Token::Dot);
-    }
+named!(blank <()>, map!(many1!(alt!(comment | map!(multispace, |_| ()))), |_|()));
 
-    #[test]
-    fn equal_token() {
-        let mut parser = Parser::new("=");
-        assert_eq!(parser.next_token(), Token::Eq);
-    }
+named!(comment <()>, alt!(
+    chain!(
+        tag!("/*") ~
+            take_until_and_consume!("*/"),
+        ||()) |
+    chain!(tag!("//") ~ take_until_and_consume!("\n"), ||()) |
+    chain!(tag!("#") ~ take_until_and_consume!("\n"), ||())));
 
-    #[test]
-    fn comma_token() {
-        let mut parser = Parser::new(",");
-        assert_eq!(parser.next_token(), Token::Comma);
-    }
 
-    #[test]
-    fn curly_token() {
-        let mut parser = Parser::new("{}");
-        assert_eq!(parser.next_token(), Token::LCurly);
-        assert_eq!(parser.next_token(), Token::RCurly);
-    }
 
-    #[test]
-    fn angle_token() {
-        let mut parser = Parser::new("<>");
-        assert_eq!(parser.next_token(), Token::LAngle);
-        assert_eq!(parser.next_token(), Token::RAngle);
-    }
 
-    #[test]
-    fn semi_token() {
-        let mut parser = Parser::new(";");
-        assert_eq!(parser.next_token(), Token::Semi);
-    }
+#[test]
+fn test_document() {
+    assert_eq!(document(b"include \"foo.thrift\" ").unwrap().1,
+               Document{
+                   headers: vec![Header::Include(Include {path: "foo.thrift".to_string()})],
+                   definitions: vec![]}
+    );
 
-    #[test]
-    #[should_panic]
-    fn whitespace_token() {
-        let mut parser = Parser::new(" ");
-        assert_eq!(parser.next_token(), Token::Whitespace);
-    }
+    assert_eq!(document(b"const i32 foo = 1;").unwrap().1,
+               Document{
+                   headers: vec![],
+                   definitions: vec![Definition::Const(Const {ident: "foo".to_string(), ty: Ty::I32, value: ConstValue::Int(1)})]}
+    );
 
-    #[test]
-    fn whitespace_grab_token() {
-        let mut parser = Parser::new("     >");
-        assert_eq!(parser.next_token(), Token::RAngle);
-    }
 
-    #[test]
-    fn comment_token() {
-        let mut parser = Parser::new("<//foobar\n:");
-        assert_eq!(parser.next_token(), Token::LAngle);
-        assert_eq!(parser.next_token(), Token::Comment);
-        assert_eq!(parser.next_token(), Token::Colon);
-    }
+    assert_eq!(document(b"
+include \"foo.thrift\"
 
-    #[test]
-    fn multi_comment_token() {
-        let mut parser = Parser::new("</*\n
-                                     fofoo*/>");
-        assert_eq!(parser.next_token(), Token::LAngle);
-        assert_eq!(parser.next_token(), Token::Comment);
-        assert_eq!(parser.next_token(), Token::RAngle);
-    }
+const i32 foo = 1
 
-    #[test]
-    fn parens_token() {
-        let mut parser = Parser::new("()");
-        assert_eq!(parser.next_token(), Token::LParen);
-        assert_eq!(parser.next_token(), Token::RParen);
-    }
+struct Foo {}
 
-    #[test]
-    fn hash_comment_token() {
-        let mut parser = Parser::new("<#foobar\n:");
-        assert_eq!(parser.next_token(), Token::LAngle);
-        assert_eq!(parser.next_token(), Token::Comment);
-        assert_eq!(parser.next_token(), Token::Colon);
-    }
+").unwrap().1,
+               Document{
+                   headers: vec![Header::Include(Include {path: "foo.thrift".to_string()})],
+                   definitions: vec![Definition::Const(Const {ident: "foo".to_string(), ty: Ty::I32, value: ConstValue::Int(1)}),
+                                     Definition::Struct(Struct {ident: "Foo".to_string(), fields: vec![],})]}
+    );
 
-    #[test]
-    fn ident_token() {
-        assert_eq!(Parser::new("foobar").next_token(), Token::Ident("foobar".to_string()));
-        assert_eq!(Parser::new("foobar123").next_token(), Token::Ident("foobar123".to_string()));
-        assert_eq!(Parser::new("foobar_123").next_token(), Token::Ident("foobar_123".to_string()));
-        assert_eq!(Parser::new("_FFF").next_token(), Token::Ident("_FFF".to_string()));
-    }
 
-    #[test]
-    fn quoted_string_token() {
-        assert_eq!(Parser::new("\"hello world 12338383\"").next_token(), Token::QuotedString("hello world 12338383".to_string()));
-    }
+}
 
-    #[test]
-    #[should_panic]
-    fn fail_ident_token() {
-        assert_eq!(Parser::new("1foobar").next_token(), Token::Ident("1foobar".to_string()));
-    }
 
-    #[test]
-    fn keywords_token() {
-        assert_eq!(Parser::new("oneway").next_token(), Token::Keyword(Keyword::Oneway));
-        assert_eq!(Parser::new("exception").next_token(), Token::Keyword(Keyword::Exception));
-        assert_eq!(Parser::new("struct").next_token(), Token::Keyword(Keyword::Struct));
-        assert_eq!(Parser::new("enum").next_token(), Token::Keyword(Keyword::Enum));
-        assert_eq!(Parser::new("namespace").next_token(), Token::Keyword(Keyword::Namespace));
-        assert_eq!(Parser::new("service").next_token(), Token::Keyword(Keyword::Service));
-        assert_eq!(Parser::new("throws").next_token(), Token::Keyword(Keyword::Throws));
-        assert_eq!(Parser::new("typedef").next_token(), Token::Keyword(Keyword::Typedef));
-        assert_eq!(Parser::new("optional").next_token(), Token::Keyword(Keyword::Optional));
-        assert_eq!(Parser::new("required").next_token(), Token::Keyword(Keyword::Required));
-        assert_eq!(Parser::new("const").next_token(), Token::Keyword(Keyword::Const));
-    }
+#[test]
+fn test_header() {
+    assert_eq!(header(b"include \"foo.thrift\"").unwrap().1,
+               Header::Include(Include {path: "foo.thrift".to_string()})
+    );
 
-    #[test]
-    fn eat_token() {
-        let mut p = Parser::new(":");
-        assert_eq!(p.eat(&Token::Colon), true);
-    }
+    assert_eq!(header(b"namespace rust aaaa").unwrap().1,
+               Header::Namespace(Namespace {
+                   lang: "rust".to_string(),
+                   module: "aaaa".to_string(),
+               }));
 
-    #[test]
-    fn eat_keywords() {
-        let mut p = Parser::new("oneway");
-        assert_eq!(p.eat_keyword(Keyword::Oneway), true);
-    }
+}
 
-    #[test]
-    fn parse_namespace() {
-        let mut p = Parser::new("namespace rust foobar");
-        let ns = p.parse_namespace().unwrap();
-        assert_eq!(&*ns.lang, "rust");
-        assert_eq!(&*ns.module, "foobar");
-    }
+#[test]
+fn test_include() {
+    assert_eq!(include(b"include \"foo.thrift\"").unwrap().1,
+               Include {path: "foo.thrift".to_string()}
+    );
+}
 
-    #[test]
-    fn parse_namesp_ace() {
-        let mut p = Parser::new("namespace rust foobar");
-        let ns = p.parse_namespace().unwrap();
-        assert_eq!(&*ns.lang, "rust");
-        assert_eq!(&*ns.module, "foobar");
-    }
+#[test]
+fn test_namespace() {
+    assert_eq!(namespace(b"namespace rust aaaa").unwrap().1, Namespace {
+        lang: "rust".to_string(),
+        module: "aaaa".to_string(),
+    });
 
-    #[test]
-    fn parse_include() {
-        let mut p = Parser::new("include \"./../include.thrift\"");
-        let ns = p.parse_include().unwrap();
-        assert_eq!(&*ns.path, "./../include.thrift");
-    }
+    assert_eq!(namespace(b"namespace ruby Aaa").unwrap().1, Namespace {
+        lang: "ruby".to_string(),
+        module: "Aaa".to_string(),
+    });
+}
 
-    #[test]
-    fn parse_bool_ty() {
-        let mut p = Parser::new("bool");
-        assert_eq!(p.parse_ty().unwrap(), Ty::Bool);
-    }
+#[test]
+fn test_definition() {
+    assert_eq!(definition(b"const i32 foo = 1;").unwrap().1,
+               Definition::Const(Const {ident: "foo".to_string(), ty: Ty::I32, value: ConstValue::Int(1)})
+    );
 
-    #[test]
-    fn parse_binary_ty() {
-        let mut p = Parser::new("binary");
-        assert_eq!(p.parse_ty().unwrap(), Ty::Binary);
-    }
+    assert_eq!(definition(b"typedef string foo").unwrap().1,
+               Definition::Typedef(Typedef {ty: Ty::String, ident: "foo".to_string()}));
 
-    #[test]
-    fn parse_byte_ty() {
-        let mut p = Parser::new("byte");
-        assert_eq!(p.parse_ty().unwrap(), Ty::Byte);
-    }
+    assert_eq!(definition(b"enum Foo {}").unwrap().1,
+               Definition::Enum(Enum {
+                   ident: "Foo".to_string(),
+                   variants: vec![],
+               }));
 
-    #[test]
-    fn parse_i16_ty() {
-        let mut p = Parser::new("i16");
-        assert_eq!(p.parse_ty().unwrap(), Ty::I16);
-    }
+    assert_eq!(definition(b"struct Foo {}").unwrap().1,
+               Definition::Struct(Struct {
+                   ident: "Foo".to_string(),
+                   fields: vec![],
+               }));
 
-    #[test]
-    fn parse_i32_ty() {
-        let mut p = Parser::new("i32");
-        assert_eq!(p.parse_ty().unwrap(), Ty::I32);
-    }
+    assert_eq!(definition(b"union Foo {}").unwrap().1,
+               Definition::Union(Union {
+                   ident: "Foo".to_string(),
+                   fields: vec![],
+               }));
 
-    #[test]
-    fn parse_i64_ty() {
-        let mut p = Parser::new("i64");
-        assert_eq!(p.parse_ty().unwrap(), Ty::I64);
-    }
+    assert_eq!(definition(b"exception Foo {}").unwrap().1,
+               Definition::Exception(Exception {
+                   ident: "Foo".to_string(),
+                   fields: vec![],
+               }));
+    assert_eq!(definition(b"service Foo {} ").unwrap().1,
+               Definition::Service(Service {
+                   extends: None,
+                   ident: "Foo".to_string(),
+                   methods: vec![],
+               }));
 
-    #[test]
-    fn parse_double_ty() {
-        let mut p = Parser::new("double");
-        assert_eq!(p.parse_ty().unwrap(), Ty::Double);
-    }
+}
 
-    #[test]
-    fn parse_string_ty() {
-        let mut p = Parser::new("string");
-        assert_eq!(p.parse_ty().unwrap(), Ty::String);
-    }
+#[test]
+fn test_const() {
+    assert_eq!(const_(b"const i32 foo = 1;").unwrap().1,
+               Const {ident: "foo".to_string(), ty: Ty::I32, value: ConstValue::Int(1)}
+    );
+    assert_eq!(const_(b"const i32 foo = 1,").unwrap().1,
+               Const {ident: "foo".to_string(), ty: Ty::I32, value: ConstValue::Int(1)}
+    );
+}
 
-    #[test]
-    fn parse_list_string_ty() {
-        let mut p = Parser::new("list<string>");
-        assert_eq!(p.parse_ty().unwrap(), Ty::List(Box::new(Ty::String)));
-    }
 
-    #[test]
-    fn parse_list_double_ty() {
-        let mut p = Parser::new("list<double>");
-        assert_eq!(p.parse_ty().unwrap(), Ty::List(Box::new(Ty::Double)));
-    }
+#[test]
+fn test_typedef() {
+    assert_eq!(typedef(b"typedef string foo").unwrap().1,
+               Typedef {ty: Ty::String, ident: "foo".to_string()});
+}
 
-    #[test]
-    fn parse_list_list_byte_ty() {
-        let mut p = Parser::new("list<list<byte>>");
-        assert_eq!(p.parse_ty().unwrap(), Ty::List(Box::new(Ty::List(Box::new(Ty::Byte)))));
-    }
 
-    #[test]
-    fn parse_set_byte_ty() {
-        let mut p = Parser::new("set<byte>");
-        assert_eq!(p.parse_ty().unwrap(), Ty::Set(Box::new(Ty::Byte)));
-    }
+#[test]
+fn test_enum() {
+    assert_eq!(enum_(b"enum Foo {}").unwrap().1,
+               Enum {
+                   ident: "Foo".to_string(),
+                   variants: vec![],
+               });
 
-    #[test]
-    fn parse_set_string_ty() {
-        let mut p = Parser::new("set<string>");
-        assert_eq!(p.parse_ty().unwrap(), Ty::Set(Box::new(Ty::String)));
-    }
+    assert_eq!(enum_(b"enum Foo {
+foo
+}").unwrap().1,
+               Enum {
+                   ident: "Foo".to_string(),
+                   variants: vec![Variant{ident:"foo".to_string(), seq: None}]
+               });
 
-    #[test]
-    fn parse_map_i32_string_ty() {
-        let mut p = Parser::new("map<i32,string>");
-        assert_eq!(p.parse_ty().unwrap(), Ty::Map(Box::new(Ty::I32), Box::new(Ty::String)));
-    }
+    assert_eq!(enum_(b"enum Foo {
+foo
+}").unwrap().1,
+               Enum {
+                   ident: "Foo".to_string(),
+                   variants: vec![Variant{ident: "foo".to_string(), seq: None}]
+               });
 
-    #[test]
-    fn parse_map_i32_list_string_ty() {
-        let mut p = Parser::new("map<i32,list<string>>");
-        assert_eq!(p.parse_ty().unwrap(), Ty::Map(Box::new(Ty::I32), Box::new(Ty::List(Box::new(Ty::String)))));
-    }
+    assert_eq!(enum_(b"enum Foo {
+foo
+bar
+}").unwrap().1,
+               Enum {
+                   ident: "Foo".to_string(),
+                   variants: vec![Variant {ident: "foo".to_string(), seq: None},
+                                  Variant{ident: "bar".to_string(), seq: None}
+                   ]
+               });
 
-    #[test]
-    fn parse_typedef() {
-        let mut p = Parser::new("typedef i32 MyInteger");
-        let def = p.parse_typedef().unwrap();
-        assert_eq!(def.0, Ty::I32);
-        assert_eq!(&*def.1, "MyInteger");
-    }
+    assert_eq!(enum_(b"enum Foo {
+foo,
+bar,
+}").unwrap().1,
+               Enum {
+                   ident: "Foo".to_string(),
+                   variants: vec![Variant{ident: "foo".to_string(), seq: None},
+                                  Variant{ident: "bar".to_string(), seq: None}
+                   ]
+               });
+    assert_eq!(enum_(b"enum Foo {
+foo;
+bar;
+}").unwrap().1,
+               Enum {
+                   ident: "Foo".to_string(),
+                   variants: vec![Variant{ident: "foo".to_string(), seq: None},
+                                  Variant{ident: "bar".to_string(), seq: None}
+                   ]
+               });
+}
 
-    #[test]
-    fn parse_empty_enum() {
-        let mut p = Parser::new("enum FooBar {}");
-        let def = p.parse_enum().unwrap();
-        assert_eq!(&*def.ident, "FooBar");
-        assert_eq!(def.variants.len(), 0);
-    }
 
-    #[test]
-    fn parse_one_variant_enum() {
-        let mut p = Parser::new("enum Hello { ONE }");
-        let def = p.parse_enum().unwrap();
-        assert_eq!(&*def.ident, "Hello");
-        assert_eq!(def.variants.len(), 1);
-        assert_eq!(&*def.variants[0], "ONE");
-    }
+#[test]
+fn test_struct() {
+    assert_eq!(struct_(b"struct Foo {}").unwrap().1,
+               Struct {
+                   ident: "Foo".to_string(),
+                   fields: vec![],
+               });
 
-    #[test]
-    fn parse_empty_service() {
-        let mut p = Parser::new("service Flock {}");
-        let def = p.parse_service().unwrap();
-        assert_eq!(&*def.ident, "Flock");
-        assert_eq!(def.methods.len(), 0);
-    }
+    assert_eq!(struct_(b"struct Foo {1: required string foo}").unwrap().1,
+               Struct {
+                   ident: "Foo".to_string(),
+                   fields: vec![
+                       StructField {
+                           seq: Some(1),
+                           optional: false,
+                           ident: "foo".to_string(),
+                           ty: Ty::String,
+                           value: None,
+                       }],
+               });
+}
 
-    #[test]
-    fn parse_method_service() {
-        let mut p = Parser::new("service Flock {
-                                    void ping();
-                                }");
-        let def = p.parse_service().unwrap();
-        assert_eq!(&*def.ident, "Flock");
-        assert_eq!(def.methods.len(), 1);
-        assert_eq!(&*def.methods[0].ident, "ping");
-        assert_eq!(def.methods[0].ty, Ty::Void);
-        assert_eq!(def.methods[0].oneway, false);
-        assert_eq!(def.methods[0].args.len(), 0);
-    }
+#[test]
+fn test_union() {
+    assert_eq!(union(b"union Foo {}").unwrap().1,
+               Union {
+                   ident: "Foo".to_string(),
+                   fields: vec![],
+               });
 
-    #[test]
-    fn parse_method_with_one_args_service() {
-        let mut p = Parser::new("service Beans {
-                                    void poutine(1: string firstName);
-                                }");
-        let def = p.parse_service().unwrap();
-        assert_eq!(&*def.ident, "Beans");
-        assert_eq!(def.methods.len(), 1);
-        assert_eq!(&*def.methods[0].ident, "poutine");
-        assert_eq!(def.methods[0].ty, Ty::Void);
-        assert_eq!(def.methods[0].oneway, false);
-        assert_eq!(def.methods[0].args.len(), 1);
-        assert_eq!(def.methods[0].args[0], StructField {
-            optional: false,
-            seq: 1,
-            ty: Ty::String,
-            ident: "firstName".to_string()
-        });
-    }
+    assert_eq!(union(b"union Foo {1: required string foo}").unwrap().1,
+               Union {
+                   ident: "Foo".to_string(),
+                   fields: vec![
+                       StructField {
+                           seq: Some(1),
+                           optional: false,
+                           ident: "foo".to_string(),
+                           ty: Ty::String,
+                           value: None,
+                       }],
+               });
+}
 
-    #[test]
-    fn parse_oneway_method_service() {
-        let mut p = Parser::new("service Flock {
-                                    oneway void ping();
-                                }");
-        let def = p.parse_service().unwrap();
-        assert_eq!(&*def.ident, "Flock");
-        assert_eq!(def.methods.len(), 1);
-        assert_eq!(&*def.methods[0].ident, "ping");
-        assert!(def.methods[0].ty == Ty::Void);
-        assert_eq!(def.methods[0].oneway, true);
-        assert_eq!(def.methods[0].args.len(), 0);
-    }
 
-    #[test]
-    fn parse_multi_variant_enum() {
-        let mut p = Parser::new("enum Hello { ONE, TWO }");
-        let def = p.parse_enum().unwrap();
-        assert_eq!(&*def.ident, "Hello");
-        assert_eq!(def.variants.len(), 2);
-        assert_eq!(&*def.variants[0], "ONE");
-        assert_eq!(&*def.variants[1], "TWO");
-    }
+#[test]
+fn test_exception() {
+    assert_eq!(exception(b"exception Foo {}").unwrap().1,
+               Exception{
+                   ident: "Foo".to_string(),
+                   fields: vec![],
+               });
 
-    #[test]
-    fn parse_empty_struct() {
-        let mut p = Parser::new("struct FooBar {}");
-        let def = p.parse_struct().unwrap();
-        assert_eq!(&*def.ident, "FooBar");
-        assert_eq!(def.fields.len(), 0);
-    }
+    assert_eq!(exception(b"exception Foo {1: required string foo}").unwrap().1,
+               Exception{
+                   ident: "Foo".to_string(),
+                   fields: vec![
+                       StructField {
+                           seq: Some(1),
+                           optional: false,
+                           ident: "foo".to_string(),
+                           ty: Ty::String,
+                           value: None,
+                       }],
+               });
+}
 
-    #[test]
-    fn parse_struct_w_field() {
-        let mut p = Parser::new("struct FooBar { 1: required i32 mycat }");
-        let def = p.parse_struct().unwrap();
-        assert_eq!(&*def.ident, "FooBar");
-        assert_eq!(def.fields.len(), 1);
-    }
+#[test]
+fn test_service() {
+    assert_eq!(service(b"service Foo {
+}
+").unwrap().1, Service {
+extends: None,
+ident: "Foo".to_string(),
+methods: vec![],
+});
 
-    #[test]
-    fn parse_struct_w_multi_field() {
-        let mut p = Parser::new("struct FooBar { 1: required i32 mycat; 2: required i32 two }");
-        let def = p.parse_struct().unwrap();
-        assert_eq!(&*def.ident, "FooBar");
-        assert_eq!(def.fields.len(), 2);
+    assert_eq!(service(b"service Foo {
+void foo(),
+}
+").unwrap().1, Service {
+extends: None,
+ident: "Foo".to_string(),
+methods: vec![
+    ServiceMethod {
+        oneway: false,
+        ident: "foo".to_string(),
+        ty: Ty::Void,
+        args: vec![],
+        throws: None,
     }
+],
+});
 
-    #[test]
-    fn parse_struct_field_optional() {
-        let mut p = Parser::new("1: optional i32 foobar");
-        let def = p.parse_struct_field().unwrap();
-        assert_eq!(&*def.ident, "foobar");
-        assert_eq!(def.ty, Ty::I32);
-        assert_eq!(def.seq, 1);
-        assert_eq!(def.optional, true);
+    assert_eq!(service(b"service Foo {
+void foo();
+}
+").unwrap().1, Service {
+extends: None,
+ident: "Foo".to_string(),
+methods: vec![
+    ServiceMethod {
+        oneway: false,
+        ident: "foo".to_string(),
+        ty: Ty::Void,
+        args: vec![],
+        throws: None,
     }
+],
+});
 
-    #[test]
-    fn parse_struct_field_required() {
-        let mut p = Parser::new("1: required i32 foobar");
-        let def = p.parse_struct_field().unwrap();
-        assert_eq!(&*def.ident, "foobar");
-        assert_eq!(def.ty, Ty::I32);
-        assert_eq!(def.seq, 1);
-        assert_eq!(def.optional, false);
+    assert_eq!(service(b"service Foo {
+void foo()
+void bar()
+}
+").unwrap().1, Service {
+extends: None,
+ident: "Foo".to_string(),
+methods: vec![
+    ServiceMethod {
+        oneway: false,
+        ident: "foo".to_string(),
+        ty: Ty::Void,
+        args: vec![],
+        throws: None,
+    },
+    ServiceMethod {
+        oneway: false,
+        ident: "bar".to_string(),
+        ty: Ty::Void,
+        args: vec![],
+        throws: None,
     }
+],
+});
+
+    assert_eq!(service(b"service Foo {
+void foo();
+void bar();
+}
+").unwrap().1, Service {
+extends: None,
+ident: "Foo".to_string(),
+methods: vec![
+    ServiceMethod {
+        oneway: false,
+        ident: "foo".to_string(),
+        ty: Ty::Void,
+        args: vec![],
+        throws: None,
+    },
+    ServiceMethod {
+        oneway: false,
+        ident: "bar".to_string(),
+        ty: Ty::Void,
+        args: vec![],
+        throws: None,
+    }
+],
+});
+
+    assert_eq!(service(b"service Foo {
+void foo(),
+void bar(),
+}
+").unwrap().1, Service {
+extends: None,
+ident: "Foo".to_string(),
+methods: vec![
+    ServiceMethod {
+        oneway: false,
+        ident: "foo".to_string(),
+        ty: Ty::Void,
+        args: vec![],
+        throws: None,
+    },
+    ServiceMethod {
+        oneway: false,
+        ident: "bar".to_string(),
+        ty: Ty::Void,
+        args: vec![],
+        throws: None,
+    }
+],
+});
+
+
+    assert_eq!(service(b"service Foo extends some.Bar {
+void foo(),
+}
+").unwrap().1, Service {
+extends: Some("some.Bar".to_string()),
+ident: "Foo".to_string(),
+methods: vec![
+    ServiceMethod {
+        oneway: false,
+        ident: "foo".to_string(),
+        ty: Ty::Void,
+        args: vec![],
+        throws: None,
+    },
+],
+});
+
+}
+
+#[test]
+fn test_field() {
+    assert_eq!(field(b"string foo;").unwrap().1,
+               StructField {seq: None,
+                            optional: false,
+                            ident: "foo".to_string(),
+                            ty: Ty::String,
+                            value: None,
+               });
+    assert_eq!(field(b"1: string foo;").unwrap().1,
+               StructField {seq: Some(1),
+                            optional: false,
+                            ident: "foo".to_string(),
+                            ty: Ty::String,
+                            value: None,
+               });
+    assert_eq!(field(b"1: i32 foo;").unwrap().1,
+               StructField {seq: Some(1),
+                            optional: false,
+                            ident: "foo".to_string(),
+                            ty: Ty::I32,
+                            value: None,});
+    assert_eq!(field(b"1: i32 foo = 3;").unwrap().1,
+               StructField {seq: Some(1),
+                            optional: false,
+                            ident: "foo".to_string(),
+                            ty: Ty::I32,
+                            value: Some(ConstValue::Int(3)),
+               });
+    assert_eq!(field(b"2: required set<binary> foo,").unwrap().1,
+               StructField {seq: Some(2),
+                            optional: false,
+                            ident: "foo".to_string(),
+                            ty: Ty::Set(Box::new(Ty::Binary)),
+                            value: None,
+               });
+    assert_eq!(field(b"3: optional string foo;").unwrap().1,
+               StructField {seq: Some(3),
+                            optional: true,
+                            ident: "foo".to_string(),
+                            ty: Ty::String,
+                            value: None,
+               });
+
+}
+
+#[test]
+fn test_field_id() {
+    assert_eq!(field_id(b"1:").unwrap().1, 1);
+    assert_eq!(field_id(b"1 :").unwrap().1, 1);
+}
+
+#[test]
+fn test_field_req() {
+    assert_eq!(field_req(b"required").unwrap().1, false);
+    assert_eq!(field_req(b"optional").unwrap().1, true);
+}
+
+#[test]
+fn test_function() {
+    assert_eq!(function(b"i32 foo();").unwrap().1,
+               ServiceMethod {
+                   oneway: false,
+                   ident: "foo".to_string(),
+                   ty: Ty::I32,
+                   args: vec![],
+                   throws: None,
+               });
+
+    assert_eq!(function(b"i32 foo(1: string bar);").unwrap().1,
+               ServiceMethod {
+                   oneway: false,
+                   ident: "foo".to_string(),
+                   ty: Ty::I32,
+                   args: vec![
+                       StructField {
+                           seq: Some(1),
+                           optional: false,
+                           ident: "bar".to_string(),
+                           ty: Ty::String,
+                           value: None,
+                       },
+                   ],
+                   throws: None,
+               });
+    assert_eq!(function(b"i32 foo(1: required string bar);").unwrap().1,
+               ServiceMethod {
+                   oneway: false,
+                   ident: "foo".to_string(),
+                   ty: Ty::I32,
+                   args: vec![
+                       StructField {
+                           seq: Some(1),
+                           optional: false,
+                           ident: "bar".to_string(),
+                           ty: Ty::String,
+                           value: None,
+                       },
+                   ],
+                   throws: None,
+               });
+    assert_eq!(function(b"void foo(1: required string bar),").unwrap().1,
+               ServiceMethod {
+                   oneway: false,
+                   ident: "foo".to_string(),
+                   ty: Ty::Void,
+                   args: vec![
+                       StructField {
+                           seq: Some(1),
+                           optional: false,
+                           ident: "bar".to_string(),
+                           ty: Ty::String,
+                           value: None,
+                       },
+                   ],
+                   throws: None,
+               });
+    assert_eq!(function(b"oneway void foo(1: required string bar);").unwrap().1,
+               ServiceMethod {
+                   oneway: true,
+                   ident: "foo".to_string(),
+                   ty: Ty::Void,
+                   args: vec![
+                       StructField {
+                           seq: Some(1),
+                           optional: false,
+                           ident: "bar".to_string(),
+                           ty: Ty::String,
+                           value: None,
+                       },
+                   ],
+                   throws: None,
+               });
+    assert_eq!(function(b"oneway i32 foo(1: required string bar);").unwrap().1,
+               ServiceMethod {
+                   oneway: true,
+                   ident: "foo".to_string(),
+                   ty: Ty::I32,
+                   args: vec![
+                       StructField {
+                           seq: Some(1),
+                           optional: false,
+                           ident: "bar".to_string(),
+                           ty: Ty::String,
+                           value: None,
+                       },
+                   ],
+                   throws: None,
+               });
+    assert_eq!(function(b"i32 foo(1: required string bar; optional binary baz);").unwrap().1,
+               ServiceMethod {
+                   oneway: false,
+                   ident: "foo".to_string(),
+                   ty: Ty::I32,
+                   args: vec![
+                       StructField {
+                           seq: Some(1),
+                           optional: false,
+                           ident: "bar".to_string(),
+                           ty: Ty::String,
+                           value: None,
+                       },
+                       StructField {
+                           seq: None,
+                           optional: true,
+                           ident: "baz".to_string(),
+                           ty: Ty::Binary,
+                           value: None,
+                       },
+                   ],
+                   throws: None,
+               });
+    assert_eq!(function(b"i32 foo(1: required string bar, 2: optional binary baz);").unwrap().1,
+               ServiceMethod {
+                   oneway: false,
+                   ident: "foo".to_string(),
+                   ty: Ty::I32,
+                   args: vec![
+                       StructField {
+                           seq: Some(1),
+                           optional: false,
+                           ident: "bar".to_string(),
+                           ty: Ty::String,
+                           value: None,
+                       },
+                       StructField {
+                           seq: Some(2),
+                           optional: true,
+                           ident: "baz".to_string(),
+                           ty: Ty::Binary,
+                           value: None,
+                       },
+                   ],
+                   throws: None,
+               });
+    assert_eq!(function(b"i32 foo(1: required string bar) throws (1: list<i32> pee);").unwrap().1,
+               ServiceMethod {
+                   oneway: false,
+                   ident: "foo".to_string(),
+                   ty: Ty::I32,
+                   args: vec![
+                       StructField {
+                           seq: Some(1),
+                           optional: false,
+                           ident: "bar".to_string(),
+                           ty: Ty::String,
+                           value: None,
+                       },
+                   ],
+                   throws: Some(vec![
+                       StructField {
+                           seq: Some(1),
+                           optional: false,
+                           ident: "pee".to_string(),
+                           ty: Ty::List(Box::new(Ty::I32)),
+                           value: None,
+                       }
+                   ]),
+               });
+
+    assert_eq!(function(b"i32 foo(1: required string bar) throws (1: list<i32> pee, 2: optional set<byte> poo),").unwrap().1,
+               ServiceMethod {
+                   oneway: false,
+                   ident: "foo".to_string(),
+                   ty: Ty::I32,
+                   args: vec![
+                       StructField {
+                           seq: Some(1),
+                           optional: false,
+                           ident: "bar".to_string(),
+                           ty: Ty::String,
+                           value: None,
+                       },
+                   ],
+                   throws: Some(vec![
+                       StructField {
+                           seq: Some(1),
+                           optional: false,
+                           ident: "pee".to_string(),
+                           ty: Ty::List(Box::new(Ty::I32)),
+                           value: None,
+                       },
+                       StructField {
+                           seq: Some(2),
+                           optional: true,
+                           ident: "poo".to_string(),
+                           ty: Ty::Set(Box::new(Ty::Byte)),
+                           value: None,
+                       },
+
+                   ]),
+               });
+}
+
+#[test]
+fn test_function_type() {
+    assert_eq!(function_type(b"void").unwrap().1, Ty::Void);
+    assert_eq!(function_type(b"list<i32>").unwrap().1, Ty::List(Box::new(Ty::I32)));
+    // wicked but legal according to formal definition
+    assert_eq!(function_type(b"list<void>").unwrap().1, Ty::List(Box::new(Ty::Ident("void".to_string()))));
+}
+
+#[test]
+fn test_throws() {
+    assert_eq!(throws(b"throws(1: string foo)").unwrap().1,
+               vec![StructField {seq: Some(1),
+                                 optional: false,
+                                 ident: "foo".to_string(),
+                                 ty: Ty::String,
+                                 value: None,
+               }]);
+    assert_eq!(throws(b"throws( 1: string foo )").unwrap().1,
+               vec![StructField {seq: Some(1),
+                                 optional: false,
+                                 ident: "foo".to_string(),
+                                 ty: Ty::String,
+                                 value: None,
+               }]
+    );
+    assert_eq!(throws(b"throws(1: string foo, 2: optional i32 bar)").unwrap().1,
+               vec![StructField {seq: Some(1),
+                                 optional: false,
+                                 ident: "foo".to_string(),
+                                 ty: Ty::String,
+                                 value: None,
+               },
+                    StructField {seq: Some(2),
+                                 optional: true,
+                                 ident: "bar".to_string(),
+                                 ty: Ty::I32,
+                                 value: None,
+                    }]
+    );
+}
+
+#[test]
+fn test_field_type() {
+    assert_eq!(field_type(b"i8").unwrap().1, Ty::I8);
+    assert_eq!(field_type(b"list < i32 >").unwrap().1, Ty::List(Box::new(Ty::I32)));
+    assert_eq!(field_type(b"aaaa").unwrap().1, Ty::Ident("aaaa".to_string()));
+}
+
+#[test]
+fn test_definition_type() {
+    assert_eq!(definition_type(b"i8").unwrap().1, Ty::I8);
+    assert_eq!(definition_type(b"list < i32 >").unwrap().1, Ty::List(Box::new(Ty::I32)));
+}
+
+#[test]
+fn test_base_type() {
+    assert_eq!(base_type(b"bool").unwrap().1, Ty::Bool);
+    assert_eq!(base_type(b"byte").unwrap().1, Ty::Byte);
+    assert_eq!(base_type(b"i8").unwrap().1, Ty::I8);
+    assert_eq!(base_type(b"i16").unwrap().1, Ty::I16);
+    assert_eq!(base_type(b"i32").unwrap().1, Ty::I32);
+    assert_eq!(base_type(b"i64").unwrap().1, Ty::I64);
+    assert_eq!(base_type(b"double").unwrap().1, Ty::Double);
+    assert_eq!(base_type(b"string").unwrap().1, Ty::String);
+    assert_eq!(base_type(b"binary").unwrap().1, Ty::Binary);
+}
+
+#[test]
+fn test_container_type() {
+    assert_eq!(container_type(b"map<i32, bool>").unwrap().1, Ty::Map(Box::new(Ty::I32), Box::new(Ty::Bool)));
+    assert_eq!(container_type(b"map < i32 , string >").unwrap().1, Ty::Map(Box::new(Ty::I32), Box::new(Ty::String)));
+    assert_eq!(container_type(b"map<map<i32, bool>, map<bool, i32>>").unwrap().1,
+               Ty::Map(Box::new(Ty::Map(Box::new(Ty::I32), Box::new(Ty::Bool))),
+                       Box::new(Ty::Map(Box::new(Ty::Bool), Box::new(Ty::I32)))));
+    assert_eq!(container_type(b"set<i32>").unwrap().1, Ty::Set(Box::new(Ty::I32)));
+    assert_eq!(container_type(b"set < i32 >").unwrap().1, Ty::Set(Box::new(Ty::I32)));
+    assert_eq!(container_type(b"set<set<i32>>").unwrap().1, Ty::Set(Box::new(Ty::Set(Box::new(Ty::I32)))));
+    assert_eq!(container_type(b"list<i32>").unwrap().1, Ty::List(Box::new(Ty::I32)));
+    assert_eq!(container_type(b"list < i32 >").unwrap().1, Ty::List(Box::new(Ty::I32)));
+    assert_eq!(container_type(b"list<list<i32>>").unwrap().1, Ty::List(Box::new(Ty::List(Box::new(Ty::I32)))));
+}
+
+#[test]
+fn test_map_type() {
+    assert_eq!(map_type(b"map<i32, bool>").unwrap().1, Ty::Map(Box::new(Ty::I32), Box::new(Ty::Bool)));
+    assert_eq!(map_type(b"map < i32 , string >").unwrap().1, Ty::Map(Box::new(Ty::I32), Box::new(Ty::String)));
+    assert_eq!(map_type(b"map<map<i32, bool>, map<bool, i32>>").unwrap().1,
+               Ty::Map(Box::new(Ty::Map(Box::new(Ty::I32), Box::new(Ty::Bool))),
+                       Box::new(Ty::Map(Box::new(Ty::Bool), Box::new(Ty::I32)))));
+}
+
+
+
+#[test]
+fn test_set_type() {
+    assert_eq!(set_type(b"set<i32>").unwrap().1, Ty::Set(Box::new(Ty::I32)));
+    assert_eq!(set_type(b"set < i32 >").unwrap().1, Ty::Set(Box::new(Ty::I32)));
+    assert_eq!(set_type(b"set<set<i32>>").unwrap().1, Ty::Set(Box::new(Ty::Set(Box::new(Ty::I32)))));
+}
+
+
+#[test]
+fn test_list_type() {
+    assert_eq!(list_type(b"list<i32>").unwrap().1, Ty::List(Box::new(Ty::I32)));
+    assert_eq!(list_type(b"list < i32 >").unwrap().1, Ty::List(Box::new(Ty::I32)));
+    assert_eq!(list_type(b"list<list<i32>>").unwrap().1, Ty::List(Box::new(Ty::List(Box::new(Ty::I32)))));
+}
+
+#[test]
+fn test_const_value() {
+    assert_eq!(const_value(b"1 ").unwrap().1, ConstValue::Int(1));
+    assert_eq!(const_value(b"-1 ").unwrap().1, ConstValue::Int(-1));
+    assert_eq!(const_value(b"1.0 ").unwrap().1, ConstValue::Double(1.0));
+    assert_eq!(const_value(b"-1.01 ").unwrap().1, ConstValue::Double(-1.01));
+    assert_eq!(const_value(b"'aaa'").unwrap().1, ConstValue::String("aaa".to_string()));
+    assert_eq!(const_value(b"\"aaa\"").unwrap().1, ConstValue::String("aaa".to_string()));
+}
+
+#[test]
+fn test_int_constant() {
+    assert_eq!(int_constant(b"1").unwrap().1,  1);
+    assert_eq!(int_constant(b"-10").unwrap().1, -10);
+
+}
+
+#[test]
+fn test_double_constant() {
+    println!("{:?}", double_constant(b"-1.0 "));
+    assert_eq!(double_constant(b"1.0 ").unwrap().1,  1.0);
+    assert_eq!(double_constant(b"-0.01 ").unwrap().1, -0.01);
+    assert_eq!(double_constant(b"-1.0e-2 ").unwrap().1, -0.01);
+    assert_eq!(double_constant(b"-1E2 ").unwrap().1, -100.0);
+
+}
+
+
+#[test]
+fn test_literal() {
+    assert_eq!(literal(b"\"literal\"").unwrap().1, "literal".to_string());
+    assert_eq!(literal(b"'literal'").unwrap().1, "literal".to_string());
+}
+
+
+#[test]
+fn test_identifier() {
+    assert_eq!(identifier(b"aiueo").unwrap().1, "aiueo".to_string());
+    assert_eq!(identifier(b"_aiueo").unwrap().1, "_aiueo".to_string());
+    assert_eq!(identifier(b"_aiu3o").unwrap().1, "_aiu3o".to_string());
+    assert_eq!(identifier(b"_aiu.o").unwrap().1, "_aiu.o".to_string());
+}
+
+
+#[test]
+fn test_comment() {
+    assert_eq!(comment(b"# aaaaa
+").unwrap().1, ());
+    assert_eq!(comment(b"// aaaaa
+").unwrap().1, ());
+    assert_eq!(comment(b"/*aaa*/").unwrap().1, ());
+    assert_eq!(comment(b"/*
+aaa
+*/").unwrap().1, ());
+    assert_eq!(comment(b"/*
+* aaa
+*/").unwrap().1, ());
 }

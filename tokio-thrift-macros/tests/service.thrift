@@ -1,4 +1,4 @@
-namespace rust thrift_service;
+namespace rust thrift_service
 
 
 service Foo {

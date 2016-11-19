@@ -10,7 +10,7 @@ use std::io::Read;
 use std::fs::File;
 use std::path::Path;
 use tokio_thrift_codegen::{compile, find_rust_namespace};
-use tokio_thrift_codegen::parser::Parser;
+use tokio_thrift_codegen::parser::Document;
 
 const USAGE: &'static str = "
 Thrust: Thrift compiler for Rust
@@ -40,11 +40,16 @@ fn main() {
     let mut input = File::open(args.arg_input).expect("input file does not exist.");
     let mut s = String::new();
     input.read_to_string(&mut s).expect("file io error");
-    let mut parser = Parser::new(&s);
-    let ns = find_rust_namespace(&mut parser).expect("cannot find namespace");
+    let doc = Document::parse(&s)
+        .expect("failed to parse thrift file")
+        .expect("EOF while parsing thrift file");
+    println!("{:?}", doc);
 
-    let module = Path::new(&args.arg_output).join(ns.module).with_extension("rs");
+    let module = {
+        let ns = find_rust_namespace(&doc).expect("cannot find namespace");
+        Path::new(&args.arg_output).join(&ns.module).with_extension("rs")
+    };
     let mut output = File::create(module).expect("error creating the module.");
 
-    compile(&mut parser, &mut output).expect("failed to generate code");
+    compile(doc, &mut output).expect("failed to generate code");
 }
