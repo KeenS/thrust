@@ -132,7 +132,13 @@ macro_rules! static_register_files {
 
 pub fn compile(mut doc: Document, wr: &mut Write) -> Result<(), Error> {
     let mut handlebars = Handlebars::new();
-    static_register_files!(handlebars, "base", "service", "service_client", "service_server", "struct", "enum", "typedef", "const", "method");
+    static_register_files!(handlebars,
+                           "base", "service",
+                           "service_client",
+                           "service_server",
+                           "struct", "enum",
+                           "typedef", "const",
+                           "method", "exception");
 
     doc.rearrange();
     handlebars.register_helper("expr", Box::new(helper_ty_expr));
@@ -187,6 +193,17 @@ fn gen_struct(struct_: &Struct, data: &mut BTreeMap<String, Json>, wr: &mut Writ
     data.insert("struct".to_string(), json);
     println!("{:?}", data);
     write!(wr, "{}", handlebars.render("struct", data)?)?;
+    Ok(())
+}
+
+fn gen_exception(exception: &Exception, data: &mut BTreeMap<String, Json>, wr: &mut Write, handlebars: &mut Handlebars) -> Result<(), Error> {
+    let json = json::encode(exception)
+        .ok()
+        .and_then(|s| Json::from_str(&s).ok())
+        .expect("internal error");
+    data.insert("exception".to_string(), json);
+    println!("{:?}", data);
+    write!(wr, "{}", handlebars.render("exception", data)?)?;
     Ok(())
 }
 
