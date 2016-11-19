@@ -77,14 +77,15 @@ fn helper_const_to_literal(_: &Context,
                      rc: &mut RenderContext)
                      -> Result<(), RenderError> {
     use parser::ConstValue::*;
-    let param = h.param(0).ok_or(RenderError::new("Param 0 is required for to_rust helper."))?;
+    let param = h.param(0).ok_or(RenderError::new("Param 0 is required for to_literal helper."))?;
     let mut decoder = json::Decoder::new(param.value().clone());
     let v = ConstValue::decode(&mut decoder).expect("internal error: failed to decode json value");
     let ret = match v {
         Int(i) => i.to_string(),
         Double(d) => d.to_string(),
         String(s) => format!("{:?}", s),
-        ty @ List | ty @ Map => panic!("not supported type {:?}", ty),
+        List(_) => panic!("list literal is not supported yet"),
+        Map => panic!("map literal is not supported yet"),
     };
     rc.writer.write(ret.as_bytes())?;
     Ok(())
