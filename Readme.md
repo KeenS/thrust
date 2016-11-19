@@ -15,14 +15,14 @@ UNDER DEVELOPMENT, NOT READY TO USE
 * [x] `double`
 * [x] `string`
 * [x] `bynary`
-* [ ] `list`
-* [ ] `set`
-* [ ] `map`
+* [x] `list`
+* [x] `set`
+* [x] `map`
 
 ### Constants
 
 * [x] `int`
-* [ ] `double`
+* [x] `double`
 * [x] `literal`
 * [ ] `list`
 * [ ] `map`
@@ -33,7 +33,7 @@ UNDER DEVELOPMENT, NOT READY TO USE
 * [x] comment
 * [x] `namespace`
 * [ ] `include`
-* [x] `const` (see [Constants](#Constants) for concrete literal)
+* [x] `const` (see [Constants](#Constants) for concrete supported literal)
 * [x] `typedef`
 * [x] `struct`
   + [x] `required`
