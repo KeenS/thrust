@@ -1,7 +1,7 @@
 extern crate rustc_serialize;
 use rustc_serialize::{Decodable, Encodable, Decoder, Encoder};
 use std::str::from_utf8;
-use nom::{alpha, digit, multispace, eof, eol, IResult, Err};
+use nom::{alpha, digit, multispace, eof, IResult, Err};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Ty {
@@ -18,7 +18,6 @@ pub enum Ty {
     List(Box<Ty>),
     Set(Box<Ty>),
     Map(Box<Ty>, Box<Ty>),
-    Option(Box<Ty>),
     // User-defined type.
     Ident(String)
 }
@@ -36,6 +35,7 @@ impl From<String> for Ty {
             "i32" => Ty::I32,
             "i64" => Ty::I64,
             "double" => Ty::Double,
+            // TODO: ignore or implement list, set and map
             _ => Ty::Ident(val)
         }
     }
@@ -83,12 +83,6 @@ impl Encodable for Ty {
                     }));
                     Ok(())
                 }),
-                &Option(ref ty) => s.emit_enum_variant("option", 13, 1, |s| {
-                    try!(s.emit_enum_variant_arg(0, |s| {
-                        ty.encode(s)
-                    }));
-                    Ok(())
-                }),
                 // User-defined type.
                 &Ident(ref string) => s.emit_enum_variant("ident", 14, 1, |s| {
                     try!(s.emit_enum_variant_arg(0, |s| {
@@ -133,10 +127,6 @@ impl Ty {
             &Ty::I32 => "i32".to_string(),
             &Ty::I64 => "i64".to_string(),
             &Ty::Double => "double".to_string(),
-            &Ty::Option(ref t) => {
-                let inner = t.to_string();
-                format!("Option<{}>", inner)
-            },
             &Ty::List(ref s) => {
                 let inner = s.to_string();
                 format!("Vec<{}>", inner)

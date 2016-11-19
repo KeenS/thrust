@@ -39,7 +39,7 @@ UNDER DEVELOPMENT, NOT READY TO USE
   + [x] `required`
   + [x] `optional`
 * [x] `enum`
-  + [ ] `VARIANT = n`
+  + [x] `VARIANT = n`
 * [ ] `union`
 * [ ] `exception`
 * [x] `service`
