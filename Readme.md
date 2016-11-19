@@ -30,7 +30,7 @@ UNDER DEVELOPMENT, NOT READY TO USE
 
 ### Other Directives
 
-* [ ] comment
+* [x] comment
 * [x] `namespace`
 * [ ] `include`
 * [x] `const` (see [Constants](#Constants) for concrete literal)

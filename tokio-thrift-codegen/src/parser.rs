@@ -1,7 +1,7 @@
 extern crate rustc_serialize;
 use rustc_serialize::{Decodable, Encodable, Decoder, Encoder};
 use std::str::from_utf8;
-use nom::{alpha, digit, multispace, eof, IResult, Err};
+use nom::{alpha, digit, multispace, eof, eol, IResult, Err};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Ty {
@@ -593,6 +593,17 @@ named!(identifier <String>, chain!(
     || format!("{}{}", h, t)));
 
 named!(list_separator, alt!(tag!(",") | tag!(";")));
+
+
+named!(comment <()>, alt!(
+    chain!(
+        tag!("/*") ~
+            take_until_and_consume!("*/"),
+        ||()) |
+    chain!(tag!("//") ~ take_until_and_consume!("\n"), ||()) |
+    chain!(tag!("#") ~ take_until_and_consume!("\n"), ||())));
+
+
 
 
 #[test]
@@ -1341,4 +1352,20 @@ fn test_identifier() {
     assert_eq!(identifier(b"_aiueo").unwrap().1, "_aiueo".to_string());
     assert_eq!(identifier(b"_aiu3o").unwrap().1, "_aiu3o".to_string());
     assert_eq!(identifier(b"_aiu.o").unwrap().1, "_aiu.o".to_string());
+}
+
+
+#[test]
+fn test_comment() {
+    assert_eq!(comment(b"# aaaaa
+").unwrap().1, ());
+    assert_eq!(comment(b"// aaaaa
+").unwrap().1, ());
+    assert_eq!(comment(b"/*aaa*/").unwrap().1, ());
+    assert_eq!(comment(b"/*
+aaa
+*/").unwrap().1, ());
+    assert_eq!(comment(b"/*
+* aaa
+*/").unwrap().1, ());
 }
