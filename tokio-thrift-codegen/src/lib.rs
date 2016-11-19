@@ -145,10 +145,6 @@ pub fn compile(mut doc: Document, wr: &mut Write) -> Result<(), Error> {
     let namespace = find_rust_namespace(&doc).map(|n| &n.module[..]).unwrap_or("self");
     data.insert("namespace".to_string(), Json::String(namespace.to_string()));
 
-    // process doc.header includes
-
-    // TODO: change contenh according to the thrift document.
-    //       if it doesn't define any services, crates liske `futures` is not needed
     write!(wr,
            "{}",
            handlebars.render("base", &data).expect("faled to render base file"))?;
