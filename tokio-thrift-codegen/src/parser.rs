@@ -31,6 +31,7 @@ impl From<String> for Ty {
             "byte" => Ty::Byte,
             "bool" => Ty::Bool,
             "binary" => Ty::Binary,
+            "i8" => Ty::I8,
             "i16" => Ty::I16,
             "i32" => Ty::I32,
             "i64" => Ty::I64,
@@ -523,7 +524,7 @@ named!(const_value <ConstValue>, alt!(
     int_constant    => {ConstValue::Int} |
     double_constant => {ConstValue::Double} |
     literal         => {ConstValue::String} |
-    identifier      => {|_| panic!("not supported identifier")} |
+    identifier      => {|_| panic!("identifier not supported")} |
     const_list |
     const_map));
 
@@ -534,17 +535,13 @@ named!(int_constant <i64>, chain!
 // buggy
 named!(double_constant <f64>, chain!(
     sgn: sgn? ~
-        n: map!(digit, |d| from_utf8(d).expect("invalid utf8").parse::<i64>().unwrap()) ~
-        frac: chain!(tag!(".") ~ f: digit, || f)? ~
+        n: map_res!(digit, from_utf8) ~
+        frac: map_res!(chain!(tag!(".") ~ f: digit, || f), from_utf8)? ~
         pow: chain!(alt!(tag!("E") | tag!("e")) ~ p: int_constant, || p)?
     , || {
         let sgn = sgn.unwrap_or(1) as f64;
-        let n = n as f64;
-        let frac: Option<f64> = frac.map(|f| from_utf8(f).unwrap().parse().unwrap());
-        let frac = frac.map(|f| f / f.log10()).unwrap_or(0.0);
-        let pow  = pow.unwrap_or(1);
-        let ret: f64 = ((sgn * (n + frac)) as f64).powi(pow as i32);
-        ret
+        let f = format!("{}.{}", n, frac.unwrap_or("0")).parse::<f64>().expect("internal error: failed to parse double literal internally");
+        sgn * f.powi(pow.unwrap_or(1) as i32)
         }));
 
 named!(sgn <i64>, alt!(
@@ -1129,29 +1126,51 @@ fn test_function() {
                        },
                    ]
                });
-    // assert_eq!(function(b"i32 foo(1: required string bar) throws (1: list<i32> pee)").unwrap().1,
-    //            ServiceMethod {
-    //                oneway: false,
-    //                ident: "foo".to_string(),
-    //                ty: Ty::I32,
-    //                args: vec![
-    //                    StructField {
-    //                        seq: Some(1),
-    //                        optional: false,
-    //                        ident: "bar".to_string(),
-    //                        ty: Ty::String,
-    //                        value: None,
-    //                    },
-    //                    StructField {
-    //                        seq: Some(2),
-    //                        optional: true,
-    //                        ident: "baz".to_string(),
-    //                        ty: Ty::Binary,
-    //                        value: None,
-    //                    },
-    //                ]
-    //            });
-    // assert_eq!(function(b"i32 foo(1: required string bar) throws (1: list<i32> pee, 2: optional set<byte> poo),").unwrap().1);
+    assert_eq!(function(b"i32 foo(1: required string bar) throws (1: list<i32> pee)").unwrap().1,
+               ServiceMethod {
+                   oneway: false,
+                   ident: "foo".to_string(),
+                   ty: Ty::I32,
+                   args: vec![
+                       StructField {
+                           seq: Some(1),
+                           optional: false,
+                           ident: "bar".to_string(),
+                           ty: Ty::String,
+                           value: None,
+                       },
+                       StructField {
+                           seq: Some(2),
+                           optional: true,
+                           ident: "baz".to_string(),
+                           ty: Ty::Binary,
+                           value: None,
+                       },
+                   ]
+               });
+    
+    assert_eq!(function(b"i32 foo(1: required string bar) throws (1: list<i32> pee, 2: optional set<byte> poo),").unwrap().1,
+               ServiceMethod {
+                   oneway: false,
+                   ident: "foo".to_string(),
+                   ty: Ty::I32,
+                   args: vec![
+                       StructField {
+                           seq: Some(1),
+                           optional: false,
+                           ident: "bar".to_string(),
+                           ty: Ty::String,
+                           value: None,
+                       },
+                       StructField {
+                           seq: Some(2),
+                           optional: true,
+                           ident: "baz".to_string(),
+                           ty: Ty::Binary,
+                           value: None,
+                       },
+                   ]
+               });
 }
 
 #[test]
@@ -1270,8 +1289,8 @@ fn test_list_type() {
 fn test_const_value() {
     assert_eq!(const_value(b"1").unwrap().1, ConstValue::Int(1));
     assert_eq!(const_value(b"-1").unwrap().1, ConstValue::Int(-1));
-    // assert_eq!(const_value(b"1.0").unwrap().1, ConstValue::Double(1.0));
-    // assert_eq!(const_value(b"-1.01").unwrap().1, ConstValue::Double(-1.01));
+    assert_eq!(const_value(b"1.0").unwrap().1, ConstValue::Double(1.0));
+    assert_eq!(const_value(b"-1.01").unwrap().1, ConstValue::Double(-1.01));
     assert_eq!(const_value(b"'aaa'").unwrap().1, ConstValue::String("aaa".to_string()));
     assert_eq!(const_value(b"\"aaa\"").unwrap().1, ConstValue::String("aaa".to_string()));
 }
@@ -1283,7 +1302,6 @@ fn test_int_constant() {
 
 }
 
-#[ignore]
 #[test]
 fn test_double_constant() {
     println!("{:?}", double_constant(b"1.0"));
