@@ -172,14 +172,14 @@ pub enum Definition {
 
 #[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Include {
-    pub path: String
+    pub path: String,
 }
 
 #[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Service {
     pub extends: Option<String>,
     pub ident: String,
-    pub methods: Vec<ServiceMethod>
+    pub methods: Vec<ServiceMethod>,
 }
 
 #[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
@@ -187,45 +187,46 @@ pub struct ServiceMethod {
     pub oneway: bool,
     pub ident: String,
     pub ty: Ty,
-    pub args: Vec<StructField>
+    pub args: Vec<StructField>,
+    pub throws: Vec<StructField>,
 }
 
 #[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Enum {
     pub ident: String,
-    pub variants: Vec<Variant>
+    pub variants: Vec<Variant>,
 }
 
 
 #[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Variant {
     pub ident: String,
-    pub seq: Option<i64>
+    pub seq: Option<i64>,
 }
 
 
 #[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Union {
     pub ident: String,
-    pub fields: Vec<StructField>
+    pub fields: Vec<StructField>,
 }
 
 
 #[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Struct {
     pub ident: String,
-    pub fields: Vec<StructField>
+    pub fields: Vec<StructField>,
 }
 
 #[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Exception {
     pub ident: String,
-    pub fields: Vec<StructField>
+    pub fields: Vec<StructField>,
 }
 
 #[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Throws {
-    pub fields: Vec<StructField>
+    pub fields: Vec<StructField>,
 }
 
 #[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
@@ -265,7 +266,7 @@ pub enum ConstValue {
 #[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Namespace {
     pub lang: String,
-    pub module: String
+    pub module: String,
 }
 
 impl Document {
@@ -287,9 +288,9 @@ impl Document {
 
 
 named!(document <Document>, chain!(
-    headers: many0!(chain!(multispace? ~ h: header, || h)) ~
-        multispace? ~
-        defs:  many0!(chain!(d: definition ~ multispace?, || d)) ~
+    headers: many0!(chain!(blank? ~ h: header, || h)) ~
+        blank? ~
+        defs:  many0!(chain!(d: definition ~ blank?, || d)) ~
         eof,
     || Document {
         headers: headers,
@@ -301,15 +302,15 @@ named!(header <Header>, alt!(
     namespace  => {Header::Namespace}));
 
 named!(include <Include>, chain!(
-    tag!("include") ~ multispace ~
+    tag!("include") ~ blank ~
         file: literal,
     || Include{
         path: file,
     }));
 
 named!(namespace <Namespace>, chain!(
-    tag!("namespace") ~ multispace ~
-        lang: identifier ~ multispace ~
+    tag!("namespace") ~ blank ~
+        lang: identifier ~ blank ~
         ns: identifier,
     || Namespace{
         lang: lang,
@@ -325,11 +326,11 @@ named!(definition <Definition>, alt!(
     service   => {Definition::Service}));
 
 named!(const_ <Const>, chain!(
-    tag!("const") ~ multispace ~
-        ty: field_type ~ multispace ~
-        id: identifier ~ multispace? ~
-        tag!("=") ~ multispace? ~
-        value: const_value ~ multispace? ~
+    tag!("const") ~ blank ~
+        ty: field_type ~ blank ~
+        id: identifier ~ blank? ~
+        tag!("=") ~ blank? ~
+        value: const_value ~ blank? ~
         list_separator?,
     || Const {
         ident: id,
@@ -338,8 +339,8 @@ named!(const_ <Const>, chain!(
     }));
 
 named!(typedef <Typedef>, chain!(
-    tag!("typedef") ~ multispace ~
-        ty: definition_type ~ multispace ~
+    tag!("typedef") ~ blank ~
+        ty: definition_type ~ blank ~
         id: identifier,
     || Typedef{
         ty: ty,
@@ -347,19 +348,19 @@ named!(typedef <Typedef>, chain!(
     }));
 
 named!(enum_ <Enum>, chain!(
-    tag!("enum") ~ multispace ~
-        id: identifier ~ multispace? ~
-        tag!("{") ~ multispace? ~
+    tag!("enum") ~ blank ~
+        id: identifier ~ blank? ~
+        tag!("{") ~ blank? ~
         variants: many0!(chain!(
             variant: identifier ~
                 index: chain!(
-                    multispace? ~
+                    blank? ~
                         tag!("=") ~
-                        multispace? ~
+                        blank? ~
                         idx: int_constant, || idx)? ~
-                multispace? ~
+                blank? ~
                 list_separator? ~
-                multispace? ,
+                blank? ,
             || Variant{ident: variant, seq: index})) ~
             tag!("}"),
     || Enum{
@@ -368,11 +369,11 @@ named!(enum_ <Enum>, chain!(
     }));
 
 named!(struct_ <Struct>, chain!(
-    tag!("struct") ~ multispace ~
-        id: identifier ~ multispace? ~
+    tag!("struct") ~ blank ~
+        id: identifier ~ blank? ~
         tag!("{") ~
-        fields: many0!(chain!(multispace? ~ f: field, || f)) ~
-        multispace? ~
+        fields: many0!(chain!(blank? ~ f: field, || f)) ~
+        blank? ~
         tag!("}") ,
     || Struct {
         ident: id,
@@ -380,11 +381,11 @@ named!(struct_ <Struct>, chain!(
     }));
 
 named!(union <Union>, chain!(
-    tag!("union") ~ multispace ~
-        id: identifier ~ multispace? ~
+    tag!("union") ~ blank ~
+        id: identifier ~ blank? ~
         tag!("{") ~
-        fields: many0!(chain!(multispace? ~ f: field, || f)) ~
-        multispace? ~
+        fields: many0!(chain!(blank? ~ f: field, || f)) ~
+        blank? ~
         tag!("}") ,
     || Union {
         ident: id,
@@ -392,11 +393,11 @@ named!(union <Union>, chain!(
     }));
 
 named!(exception <Exception>, chain!(
-    tag!("exception") ~ multispace ~
-        id: identifier ~ multispace? ~
+    tag!("exception") ~ blank ~
+        id: identifier ~ blank? ~
         tag!("{") ~
-        fields: many0!(chain!(multispace? ~ f: field, || f)) ~
-        multispace? ~
+        fields: many0!(chain!(blank? ~ f: field, || f)) ~
+        blank? ~
         tag!("}") ,
     || Exception {
         ident: id,
@@ -404,13 +405,13 @@ named!(exception <Exception>, chain!(
     }));
 
 named!(service <Service>, chain!(
-    tag!("service")  ~ multispace ~
-        id: identifier ~ multispace? ~
-        // ext: chain!(tag!("extends") ~ multispace ~
+    tag!("service")  ~ blank ~
+        id: identifier ~ blank? ~
+        // ext: chain!(tag!("extends") ~ blank ~
         //             exid: identifier, || exid)? ~
-        // multispace? ~
-        tag!("{") ~ multispace? ~
-        functions: many0!(chain!(f: function ~ multispace?, || f)) ~
+        // blank? ~
+        tag!("{") ~ blank? ~
+        functions: many0!(chain!(f: function ~ blank?, || f)) ~
         tag!("}") ,
     || Service{
         extends: None,
@@ -420,11 +421,11 @@ named!(service <Service>, chain!(
     }));
 
 named!(field <StructField>, chain!(
-    idx: chain!(idx: field_id ~  multispace?, || idx)? ~
-        req: chain!(req: field_req ~ multispace, || req)? ~
-        ty: field_type ~ multispace ~
-        id: identifier ~ multispace? ~
-        value: chain!(tag!("=") ~ multispace? ~
+    idx: chain!(idx: field_id ~  blank?, || idx)? ~
+        req: chain!(req: field_req ~ blank, || req)? ~
+        ty: field_type ~ blank ~
+        id: identifier ~ blank? ~
+        value: chain!(tag!("=") ~ blank? ~
                       v: const_value, || v)? ~
         ignore_: list_separator?
         ,
@@ -437,21 +438,21 @@ named!(field <StructField>, chain!(
         value: value,
     }));
 
-named!(field_id <i64>, chain!(id: int_constant ~ multispace? ~ tag!(":"), || id));
+named!(field_id <i64>, chain!(id: int_constant ~ blank? ~ tag!(":"), || id));
 
 named!(field_req <bool>, alt!(
     tag!("required") => {|_| false}|
     tag!("optional") => {|_| true}));
 
 named!(function <ServiceMethod>, chain!(
-    oneway: chain!(tag!("oneway") ~ multispace?, ||())? ~
-        ty: function_type ~ multispace ~
-        id: identifier ~ multispace? ~
-        tag!("(") ~ multispace? ~
-        args: many0!(chain!(f: field ~ multispace?, || f)) ~
+    oneway: chain!(tag!("oneway") ~ blank?, ||())? ~
+        ty: function_type ~ blank ~
+        id: identifier ~ blank? ~
+        tag!("(") ~ blank? ~
+        args: many0!(chain!(f: field ~ blank?, || f)) ~
         tag!(")")  ~
-//        throws: chain!(multispace? ~ throws, || throws)? ~
-        chain!(multispace? ~ list_separator, ||())?
+//        throws: chain!(blank? ~ throws, || throws)? ~
+        chain!(blank? ~ list_separator, ||())?
         ,
     || {
         let oneway = oneway.is_some();
@@ -460,6 +461,7 @@ named!(function <ServiceMethod>, chain!(
             ident: id,
             ty: ty,
             args: args,
+            throws: vec![],
         }}));
 
 named!(function_type <Ty>, alt!(
@@ -467,9 +469,9 @@ named!(function_type <Ty>, alt!(
     field_type));
 
 named!(throws <Throws>, chain!(
-    tag!("throws") ~ multispace? ~
-        tag!("(") ~ multispace? ~
-        fields: many0!(chain!(f: field ~ multispace?, || f)) ~
+    tag!("throws") ~ blank? ~
+        tag!("(") ~ blank? ~
+        fields: many0!(chain!(f: field ~ blank?, || f)) ~
         tag!(")"),
     || Throws{fields: fields}));
 
@@ -496,25 +498,25 @@ named!(base_type <Ty>, alt!(
 named!(container_type <Ty>, alt!(map_type | set_type | list_type));
 
 named!(map_type <Ty>, chain!(
-    tag!("map") ~ multispace? ~
-        tag!("<") ~ multispace? ~
-        k: field_type ~ multispace? ~
-        tag!(",") ~ multispace? ~
-        v: field_type ~ multispace? ~
+    tag!("map") ~ blank? ~
+        tag!("<") ~ blank? ~
+        k: field_type ~ blank? ~
+        tag!(",") ~ blank? ~
+        v: field_type ~ blank? ~
         tag!(">"),
     || Ty::Map(Box::new(k), Box::new(v))));
 
 named!(set_type <Ty>, chain!(
-    tag!("set") ~ multispace? ~
-        tag!("<")  ~ multispace? ~
-        v: field_type ~ multispace?
+    tag!("set") ~ blank? ~
+        tag!("<")  ~ blank? ~
+        v: field_type ~ blank?
     ~ tag!(">"),
     || Ty::Set(Box::new(v))));
 
 named!(list_type <Ty>, chain!(
-    tag!("list") ~ multispace? ~
-        tag!("<")  ~ multispace? ~
-        v: field_type ~ multispace?
+    tag!("list") ~ blank? ~
+        tag!("<")  ~ blank? ~
+        v: field_type ~ blank?
     ~ tag!(">"),
     || Ty::List(Box::new(v))));
 
@@ -584,6 +586,8 @@ named!(identifier <String>, chain!(
 
 named!(list_separator, alt!(tag!(",") | tag!(";")));
 
+
+named!(blank <()>, map!(many1!(alt!(comment | map!(multispace, |_| ()))), |_|()));
 
 named!(comment <()>, alt!(
     chain!(
@@ -875,6 +879,7 @@ methods: vec![
         ident: "foo".to_string(),
         ty: Ty::Void,
         args: vec![],
+        throws: vec![],
     }
 ],
 });
@@ -891,6 +896,7 @@ methods: vec![
         ident: "foo".to_string(),
         ty: Ty::Void,
         args: vec![],
+        throws: vec![],
     }
 ],
 });
@@ -908,12 +914,14 @@ methods: vec![
         ident: "foo".to_string(),
         ty: Ty::Void,
         args: vec![],
+        throws: vec![],
     },
     ServiceMethod {
         oneway: false,
         ident: "bar".to_string(),
         ty: Ty::Void,
         args: vec![],
+        throws: vec![],
     }
 ],
 });
@@ -931,12 +939,14 @@ methods: vec![
         ident: "foo".to_string(),
         ty: Ty::Void,
         args: vec![],
+        throws: vec![],
     },
     ServiceMethod {
         oneway: false,
         ident: "bar".to_string(),
         ty: Ty::Void,
         args: vec![],
+        throws: vec![],
     }
 ],
 });
@@ -954,12 +964,14 @@ methods: vec![
         ident: "foo".to_string(),
         ty: Ty::Void,
         args: vec![],
+        throws: vec![],
     },
     ServiceMethod {
         oneway: false,
         ident: "bar".to_string(),
         ty: Ty::Void,
         args: vec![],
+        throws: vec![],
     }
 ],
 });
@@ -1028,7 +1040,8 @@ fn test_function() {
                    oneway: false,
                    ident: "foo".to_string(),
                    ty: Ty::I32,
-                   args: vec![]
+                   args: vec![],
+                   throws: vec![],
                });
 
     assert_eq!(function(b"i32 foo(1: string bar)").unwrap().1,
@@ -1044,7 +1057,8 @@ fn test_function() {
                            ty: Ty::String,
                            value: None,
                        },
-                   ]
+                   ],
+                   throws: vec![],
                });
     assert_eq!(function(b"i32 foo(1: required string bar)").unwrap().1,
                ServiceMethod {
@@ -1059,7 +1073,8 @@ fn test_function() {
                            ty: Ty::String,
                            value: None,
                        },
-                   ]
+                   ],
+                   throws: vec![],
                });
     assert_eq!(function(b"void foo(1: required string bar),").unwrap().1,
                ServiceMethod {
@@ -1074,7 +1089,8 @@ fn test_function() {
                            ty: Ty::String,
                            value: None,
                        },
-                   ]
+                   ],
+                   throws: vec![],
                });
     assert_eq!(function(b"oneway void foo(1: required string bar);").unwrap().1,
                ServiceMethod {
@@ -1089,7 +1105,8 @@ fn test_function() {
                            ty: Ty::String,
                            value: None,
                        },
-                   ]
+                   ],
+                   throws: vec![],
                });
     assert_eq!(function(b"oneway i32 foo(1: required string bar);").unwrap().1,
                ServiceMethod {
@@ -1104,7 +1121,8 @@ fn test_function() {
                            ty: Ty::String,
                            value: None,
                        },
-                   ]
+                   ],
+                   throws: vec![],
                });
     assert_eq!(function(b"i32 foo(1: required string bar; optional binary baz)").unwrap().1,
                ServiceMethod {
@@ -1126,7 +1144,8 @@ fn test_function() {
                            ty: Ty::Binary,
                            value: None,
                        },
-                   ]
+                   ],
+                   throws: vec![],
                });
     assert_eq!(function(b"i32 foo(1: required string bar, 2: optional binary baz)").unwrap().1,
                ServiceMethod {
@@ -1148,7 +1167,8 @@ fn test_function() {
                            ty: Ty::Binary,
                            value: None,
                        },
-                   ]
+                   ],
+                   throws: vec![],
                });
     assert_eq!(function(b"i32 foo(1: required string bar) throws (1: list<i32> pee)").unwrap().1,
                ServiceMethod {
@@ -1170,9 +1190,18 @@ fn test_function() {
                            ty: Ty::Binary,
                            value: None,
                        },
-                   ]
+                   ],
+                   throws: vec![
+                       StructField {
+                           seq: Some(1),
+                           optional: false,
+                           ident: "baz".to_string(),
+                           ty: Ty::List(Box::new(Ty::I32)),
+                           value: None,
+                       }
+                   ],
                });
-    
+
     assert_eq!(function(b"i32 foo(1: required string bar) throws (1: list<i32> pee, 2: optional set<byte> poo),").unwrap().1,
                ServiceMethod {
                    oneway: false,
@@ -1193,7 +1222,24 @@ fn test_function() {
                            ty: Ty::Binary,
                            value: None,
                        },
-                   ]
+                   ],
+                   throws: vec![
+                       StructField {
+                           seq: Some(1),
+                           optional: false,
+                           ident: "pee".to_string(),
+                           ty: Ty::List(Box::new(Ty::I32)),
+                           value: None,
+                       },
+                       StructField {
+                           seq: Some(2),
+                           optional: true,
+                           ident: "poo".to_string(),
+                           ty: Ty::Set(Box::new(Ty::Byte)),
+                           value: None,
+                       },
+
+                   ],
                });
 }
 
