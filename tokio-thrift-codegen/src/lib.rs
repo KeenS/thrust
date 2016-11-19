@@ -129,10 +129,11 @@ macro_rules! static_register_files {
 }
 
 
-pub fn compile(doc: &Document, wr: &mut Write) -> Result<(), Error> {
+pub fn compile(mut doc: Document, wr: &mut Write) -> Result<(), Error> {
     let mut handlebars = Handlebars::new();
     static_register_files!(handlebars, "base", "service", "service_client", "service_server", "struct", "enum", "typedef", "const", "method");
 
+    doc.rearrange();
     handlebars.register_helper("expr", Box::new(helper_ty_expr));
     handlebars.register_helper("to_protocol", Box::new(helper_ty_to_protocol));
     handlebars.register_helper("to_rust", Box::new(helper_ty_to_rust));
@@ -140,7 +141,7 @@ pub fn compile(doc: &Document, wr: &mut Write) -> Result<(), Error> {
 
 
     let mut data: BTreeMap<String, Json> = BTreeMap::new();
-    let namespace = find_rust_namespace(doc).map(|n| &n.module[..]).unwrap_or("self");
+    let namespace = find_rust_namespace(&doc).map(|n| &n.module[..]).unwrap_or("self");
     data.insert("namespace".to_string(), Json::String(namespace.to_string()));
 
     // process doc.header includes
@@ -158,8 +159,8 @@ pub fn compile(doc: &Document, wr: &mut Write) -> Result<(), Error> {
             &Typedef(ref t)   => gen_typedef(t, &mut data, wr, &mut handlebars)?,
             &Enum(ref e)      => gen_enum   (e, &mut data, wr, &mut handlebars)?,
             &Struct(ref s)    => gen_struct (s, &mut data, wr, &mut handlebars)?,
-            &Union(ref u)     => return Err(Error::NotSupported("union is not supported yet".to_string())),
-            &Exception(ref e) => return Err(Error::NotSupported("exception is not supported yet".to_string())),
+            &Union(_)     => return Err(Error::NotSupported("union is not supported yet".to_string())),
+            &Exception(_) => return Err(Error::NotSupported("exception is not supported yet".to_string())),
             &Service(ref s)   => gen_service(s, &mut data, wr, &mut handlebars)?,
         }
     }

@@ -1,7 +1,7 @@
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum {{enum.ident}} {
     {{~#each enum.variants as |variant|}}
-    {{variant}} = {{@index}},
+    {{variant.ident}} = {{variant.seq}},
     {{~/each}}
 }
 

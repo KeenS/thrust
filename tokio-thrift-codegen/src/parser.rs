@@ -203,8 +203,16 @@ pub struct ServiceMethod {
 #[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Enum {
     pub ident: String,
-    pub variants: Vec<(String, Option<i64>)>
+    pub variants: Vec<Variant>
 }
+
+
+#[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
+pub struct Variant {
+    pub ident: String,
+    pub seq: Option<i64>
+}
+
 
 #[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Union {
@@ -270,16 +278,20 @@ pub struct Namespace {
     pub module: String
 }
 
+impl Document {
+    pub fn parse(input: &str) -> Result<Option<Self>, Err<&[u8], u32>> {
+        match document(input.as_bytes()) {
+            IResult::Done(i, d) => {
+                println!("{}", from_utf8(i).unwrap());
+                Ok(Some(d))
+            },
+            IResult::Incomplete(_) => Ok(None),
+            IResult::Error(e) => Err(e),
+        }
+    }
 
-
-pub fn parse(input: &str) -> Result<Option<Document>, Err<&[u8], u32>> {
-    match document(input.as_bytes()) {
-        IResult::Done(i, d) => {
-            println!("{}", from_utf8(i).unwrap());
-            Ok(Some(d))
-        },
-        IResult::Incomplete(_) => Ok(None),
-        IResult::Error(e) => Err(e),
+    pub fn rearrange(&mut self) {
+        // resolve `include`, field id, oneway and void, warn about unsupported feature and so on.
     }
 }
 
@@ -358,7 +370,7 @@ named!(enum_ <Enum>, chain!(
                 multispace? ~
                 list_separator? ~
                 multispace? ,
-            || (variant, index))) ~
+            || Variant{ident: variant, seq: index})) ~
             tag!("}"),
     || Enum{
         ident: id,
@@ -453,10 +465,6 @@ named!(function <ServiceMethod>, chain!(
         ,
     || {
         let oneway = oneway.is_some();
-        if oneway && ty != Ty::Void {
-            // TODO return erorr
-            panic!("oneway method must return void");
-        };
         ServiceMethod{
             oneway: oneway,
             ident: id,
@@ -732,7 +740,7 @@ foo
 }").unwrap().1,
                Enum {
                    ident: "Foo".to_string(),
-                   variants: vec![("foo".to_string(), None)]
+                   variants: vec![Variant{ident:"foo".to_string(), seq: None}]
                });
 
     assert_eq!(enum_(b"enum Foo {
@@ -740,7 +748,7 @@ foo
 }").unwrap().1,
                Enum {
                    ident: "Foo".to_string(),
-                   variants: vec![("foo".to_string(), None)]
+                   variants: vec![Variant{ident: "foo".to_string(), seq: None}]
                });
 
     assert_eq!(enum_(b"enum Foo {
@@ -749,8 +757,8 @@ bar
 }").unwrap().1,
                Enum {
                    ident: "Foo".to_string(),
-                   variants: vec![("foo".to_string(), None),
-                                  ("bar".to_string(), None)
+                   variants: vec![Variant {ident: "foo".to_string(), seq: None},
+                                  Variant{ident: "bar".to_string(), seq: None}
                    ]
                });
 
@@ -760,8 +768,8 @@ bar,
 }").unwrap().1,
                Enum {
                    ident: "Foo".to_string(),
-                   variants: vec![("foo".to_string(), None),
-                                  ("bar".to_string(), None)
+                   variants: vec![Variant{ident: "foo".to_string(), seq: None},
+                                  Variant{ident: "bar".to_string(), seq: None}
                    ]
                });
     assert_eq!(enum_(b"enum Foo {
@@ -770,8 +778,8 @@ bar;
 }").unwrap().1,
                Enum {
                    ident: "Foo".to_string(),
-                   variants: vec![("foo".to_string(), None),
-                                  ("bar".to_string(), None)
+                   variants: vec![Variant{ident: "foo".to_string(), seq: None},
+                                  Variant{ident: "bar".to_string(), seq: None}
                    ]
                });
 }
@@ -1082,6 +1090,21 @@ fn test_function() {
                        },
                    ]
                });
+    assert_eq!(function(b"oneway i32 foo(1: required string bar);").unwrap().1,
+               ServiceMethod {
+                   oneway: true,
+                   ident: "foo".to_string(),
+                   ty: Ty::I32,
+                   args: vec![
+                       StructField {
+                           seq: Some(1),
+                           optional: false,
+                           ident: "bar".to_string(),
+                           ty: Ty::String,
+                           value: None,
+                       },
+                   ]
+               });
     assert_eq!(function(b"i32 foo(1: required string bar; optional binary baz)").unwrap().1,
                ServiceMethod {
                    oneway: false,
@@ -1171,13 +1194,6 @@ fn test_function() {
                        },
                    ]
                });
-}
-
-#[test]
-#[should_panic]
-fn test_function_err() {
-    function(b"oneway binary foo(1: required string bar);").unwrap() ;
-
 }
 
 #[test]
