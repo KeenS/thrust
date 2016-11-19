@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["Error",""],["ThriftMessageType",""],["ThriftType",""]],"mod":[["binary_protocol",""]],"struct":[["ThriftField",""],["ThriftMessage",""]],"trait":[["Deserialize",""],["Deserializer",""],["Serialize",""],["Serializer",""],["ThriftDeserializer",""],["ThriftSerializer",""]]});

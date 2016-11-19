@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `connect` fn in crate `tokio_proto`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, connect">
+
+    <title>tokio_proto::easy::multiplex::connect - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../../rustdoc.css">
+    <link rel="stylesheet" type="text/css" href="../../../main.css">
+    
+
+    
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        
+        <p class='location'><a href='../../index.html'>tokio_proto</a>::<wbr><a href='../index.html'>easy</a>::<wbr><a href='index.html'>multiplex</a></p><script>window.sidebarCurrent = {name: 'connect', ty: 'fn', relpath: ''};</script><script defer src="sidebar-items.js"></script>
+    </nav>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content fn">
+<h1 class='fqn'><span class='in-band'>Function <a href='../../index.html'>tokio_proto</a>::<wbr><a href='../index.html'>easy</a>::<wbr><a href='index.html'>multiplex</a>::<wbr><a class='fn' href=''>connect</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a id='src-1648' class='srclink' href='../../../src/tokio_proto/easy/multiplex.rs.html#36-46' title='goto source code'>[src]</a></span></h1>
+<pre class='rust fn'>pub fn connect&lt;F,&nbsp;T,&nbsp;U&gt;(frames: F, handle: &amp;<a class='struct' href='../../../tokio_core/reactor/struct.Handle.html' title='tokio_core::reactor::Handle'>Handle</a>) -&gt; <a class='struct' href='../../../tokio_proto/easy/struct.EasyClient.html' title='tokio_proto::easy::EasyClient'>EasyClient</a>&lt;U,&nbsp;T&gt; <span class='where'>where F: FramedIo&lt;In=<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>(</a><a class='type' href='../../../tokio_proto/multiplex/type.RequestId.html' title='tokio_proto::multiplex::RequestId'>RequestId</a>, U<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>)</a>,&nbsp;Out=<a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>(</a><a class='type' href='../../../tokio_proto/multiplex/type.RequestId.html' title='tokio_proto::multiplex::RequestId'>RequestId</a>, T<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>)</a>&gt;&gt; + 'static, T: 'static, U: 'static</span></pre><div class='docblock'><p>The &quot;easy&quot; form of connecting a multiplexed client.</p>
+
+<p>This function takes an instance of the <code>tokio_core::io::FrameIo</code> trait as
+the <code>frames</code> argument, a <code>handle</code> to the event loop to connect on, and then
+returns the connected client.</p>
+
+<p>The client returned implements the <code>Service</code> trait. This trait
+implementation allows sending requests to the transport provided and returns
+futures to the responses. All requests are automatically multiplexed and
+managed internally.</p>
+</div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt>?</dt>
+                    <dd>Show this help dialog</dd>
+                    <dt>S</dt>
+                    <dd>Focus the search field</dd>
+                    <dt>&larrb;</dt>
+                    <dd>Move up in search results</dd>
+                    <dt>&rarrb;</dt>
+                    <dd>Move down in search results</dd>
+                    <dt>&#9166;</dt>
+                    <dd>Go to active search result</dd>
+                    <dt>+</dt>
+                    <dd>Collapse/expand all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../../../";
+        window.currentCrate = "tokio_proto";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../../../jquery.js"></script>
+    <script src="../../../main.js"></script>
+    
+    <script defer src="../../../search-index.js"></script>
+</body>
+</html>

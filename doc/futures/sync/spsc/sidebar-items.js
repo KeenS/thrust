@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["channel","Creates an in-memory channel implementation of the `Stream` trait."]],"struct":[["Receiver","The receiving end of a channel which implements the `Stream` trait."],["SendError","Error type for sending, used when the receiving end of the channel is dropped"],["Sender","The transmission end of a channel which is used to send values."]]});

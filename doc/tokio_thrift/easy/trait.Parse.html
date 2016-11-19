@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `Parse` trait in crate `tokio_thrift`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, Parse">
+
+    <title>tokio_thrift::easy::Parse - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../rustdoc.css">
+    <link rel="stylesheet" type="text/css" href="../../main.css">
+    
+
+    
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        
+        <p class='location'><a href='../index.html'>tokio_thrift</a>::<wbr><a href='index.html'>easy</a></p><script>window.sidebarCurrent = {name: 'Parse', ty: 'trait', relpath: ''};</script><script defer src="sidebar-items.js"></script>
+    </nav>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content trait">
+<h1 class='fqn'><span class='in-band'>Trait <a href='../index.html'>tokio_thrift</a>::<wbr><a href='index.html'>easy</a>::<wbr><a class='trait' href=''>Parse</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a id='src-928' class='srclink' href='../../src/tokio_thrift/src/easy.rs.html#241-284' title='goto source code'>[src]</a></span></h1>
+<pre class='rust trait'>pub trait Parse {
+    type <a href='#associatedtype.Out' class='type'>Out</a>;
+    fn <a href='#tymethod.parse' class='fnname'>parse</a>(&amp;mut self, buf: &amp;mut <a class='struct' href='../../tokio_thrift/easy/struct.EasyBuf.html' title='tokio_thrift::easy::EasyBuf'>EasyBuf</a>) -&gt; <a class='type' href='../../futures/poll/type.Poll.html' title='futures::poll::Poll'>Poll</a>&lt;Self::Out,&nbsp;<a class='struct' href='https://doc.rust-lang.org/nightly/std/io/error/struct.Error.html' title='std::io::error::Error'>Error</a>&gt;;
+
+    fn <a href='#method.done' class='fnname'>done</a>(&amp;mut self, buf: &amp;mut <a class='struct' href='../../tokio_thrift/easy/struct.EasyBuf.html' title='tokio_thrift::easy::EasyBuf'>EasyBuf</a>) -&gt; <a class='type' href='https://doc.rust-lang.org/nightly/std/io/error/type.Result.html' title='std::io::error::Result'>Result</a>&lt;Self::Out&gt; { ... }
+}</pre><div class='docblock'><p>Implementation of parsing a frame from an internal buffer.</p>
+
+<p>This trait is used when constructing an instance of <code>EasyFramed</code>. It defines how
+to parse the incoming bytes on a stream to the specified type of frame for
+that framed I/O stream.</p>
+
+<p>The primary method of this trait, <code>parse</code>, attempts to parse a method from a
+buffer of bytes. It has the option of returning <code>NotReady</code>, indicating that
+more bytes need to be read before parsing can continue as well.</p>
+</div>
+            <h2 id='associated-types'>Associated Types</h2>
+            <div class='methods'>
+        <h3 id='associatedtype.Out' class='method stab '><span id='Out.t' class='invisible'><code>type <a href='#associatedtype.Out' class='type'>Out</a></code></span></h3><div class='docblock'><p>The type that this instance of <code>Parse</code> will attempt to be parsing.</p>
+
+<p>This is typically a frame being parsed from an input stream, such as an
+HTTP request, a Redis command, etc.</p>
+</div></div>
+            <h2 id='required-methods'>Required Methods</h2>
+            <div class='methods'>
+        <h3 id='tymethod.parse' class='method stab '><span id='parse.v' class='invisible'><code>fn <a href='#tymethod.parse' class='fnname'>parse</a>(&amp;mut self, buf: &amp;mut <a class='struct' href='../../tokio_thrift/easy/struct.EasyBuf.html' title='tokio_thrift::easy::EasyBuf'>EasyBuf</a>) -&gt; <a class='type' href='../../futures/poll/type.Poll.html' title='futures::poll::Poll'>Poll</a>&lt;Self::Out,&nbsp;<a class='struct' href='https://doc.rust-lang.org/nightly/std/io/error/struct.Error.html' title='std::io::error::Error'>Error</a>&gt;</code></span></h3><div class='docblock'><p>Attempts to parse a frame from the provided buffer of bytes.</p>
+
+<p>This method is called by <code>EasyFramed</code> whenever bytes are ready to be parsed.
+The provided buffer of bytes is what&#39;s been read so far, and this
+instance of <code>Parse</code> can determine whether an entire frame is in the
+buffer and is ready to be returned.</p>
+
+<p>If an entire frame is available, then this instance will remove those
+bytes from the buffer provided and return them as a parsed frame. Note
+that removing bytes from the provided buffer doesn&#39;t always necessarily
+copy the bytes, so this should be an efficient operation in most
+circumstances.</p>
+
+<p>If the bytes look valid, but a frame isn&#39;t fully available yet, then
+<code>Async::NotReady</code> is returned. This indicates to the <code>EasyFramed</code> instance
+that it needs to read some more bytes before calling this method again.</p>
+
+<p>Finally, if the bytes in the buffer are malformed then an error is
+returned indicating why. This informs <code>EasyFramed</code> that the stream is now
+corrupt and should be terminated.</p>
+</div></div>
+            <h2 id='provided-methods'>Provided Methods</h2>
+            <div class='methods'>
+        <h3 id='method.done' class='method stab '><span id='done.v' class='invisible'><code>fn <a href='#method.done' class='fnname'>done</a>(&amp;mut self, buf: &amp;mut <a class='struct' href='../../tokio_thrift/easy/struct.EasyBuf.html' title='tokio_thrift::easy::EasyBuf'>EasyBuf</a>) -&gt; <a class='type' href='https://doc.rust-lang.org/nightly/std/io/error/type.Result.html' title='std::io::error::Result'>Result</a>&lt;Self::Out&gt;</code></span></h3><div class='docblock'><p>A default method available to be called when there are no more bytes
+available to be read from the underlying I/O.</p>
+
+<p>This method defaults to calling <code>parse</code> and returns an error if
+<code>NotReady</code> is returned. Typically this doesn&#39;t need to be implemented
+unless the framing protocol differs near the end of the stream.</p>
+</div></div>
+        <h2 id='implementors'>Implementors</h2>
+        <ul class='item-list' id='implementors-list'>
+    <li><code>impl&lt;T&gt; Parse for <a class='struct' href='../../tokio_thrift/transport/framed_transport/struct.FramedTransport.html' title='tokio_thrift::transport::framed_transport::FramedTransport'>FramedTransport</a>&lt;T&gt; <span class='where'>where T: <a class='trait' href='../../tokio_thrift/protocol/trait.Deserialize.html' title='tokio_thrift::protocol::Deserialize'>De</a></span></code></li>
+<li><code>impl&lt;T&gt; Parse for <a class='struct' href='../../tokio_thrift/transport/framed_transport/struct.TMethodArgsTransport.html' title='tokio_thrift::transport::framed_transport::TMethodArgsTransport'>TMethodArgsTransport</a>&lt;T&gt; <span class='where'>where T: <a class='trait' href='../../tokio_thrift/transport/framed_transport/trait.ParseThrift.html' title='tokio_thrift::transport::framed_transport::ParseThrift'>ParseThrift</a> + <a class='trait' href='https://doc.rust-lang.org/nightly/core/str/trait.FromStr.html' title='core::str::FromStr'>FromStr</a> + <a class='trait' href='https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html' title='core::marker::Sized'>Sized</a></span></code></li>
+<li><code>impl&lt;T&gt; Parse for <a class='struct' href='../../tokio_thrift/transport/framed_transport/struct.TMethodRetTransport.html' title='tokio_thrift::transport::framed_transport::TMethodRetTransport'>TMethodRetTransport</a>&lt;T&gt; <span class='where'>where T: <a class='trait' href='../../tokio_thrift/transport/framed_transport/trait.ParseThrift.html' title='tokio_thrift::transport::framed_transport::ParseThrift'>ParseThrift</a> + <a class='trait' href='https://doc.rust-lang.org/nightly/core/str/trait.FromStr.html' title='core::str::FromStr'>FromStr</a> + <a class='trait' href='https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html' title='core::marker::Sized'>Sized</a></span></code></li>
+</ul><script type="text/javascript" async
+                         src="../../implementors/tokio_thrift/easy/trait.Parse.js">
+                 </script></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt>?</dt>
+                    <dd>Show this help dialog</dd>
+                    <dt>S</dt>
+                    <dd>Focus the search field</dd>
+                    <dt>&larrb;</dt>
+                    <dd>Move up in search results</dd>
+                    <dt>&rarrb;</dt>
+                    <dd>Move down in search results</dd>
+                    <dt>&#9166;</dt>
+                    <dd>Go to active search result</dd>
+                    <dt>+</dt>
+                    <dd>Collapse/expand all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../../";
+        window.currentCrate = "tokio_thrift";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../../jquery.js"></script>
+    <script src="../../main.js"></script>
+    
+    <script defer src="../../search-index.js"></script>
+</body>
+</html>

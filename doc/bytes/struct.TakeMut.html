@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `TakeMut` struct in crate `bytes`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, TakeMut">
+
+    <title>bytes::TakeMut - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../rustdoc.css">
+    <link rel="stylesheet" type="text/css" href="../main.css">
+    
+
+    
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        
+        <p class='location'><a href='index.html'>bytes</a></p><script>window.sidebarCurrent = {name: 'TakeMut', ty: 'struct', relpath: ''};</script><script defer src="sidebar-items.js"></script>
+    </nav>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content struct">
+<h1 class='fqn'><span class='in-band'>Struct <a href='index.html'>bytes</a>::<wbr><a class='struct' href=''>TakeMut</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a id='src-189' class='srclink' href='../src/bytes/buf/take.rs.html#13-16' title='goto source code'>[src]</a></span></h1>
+<pre class='rust struct'>pub struct TakeMut&lt;T&gt; { /* fields omitted */ }</pre><div class='docblock'><p>A buffer adapter which limits the bytes written from an underlying value.</p>
+</div><h2 id='methods'>Methods</h2><h3 class='impl'><span class='in-band'><code>impl&lt;T&gt; <a class='struct' href='../bytes/struct.TakeMut.html' title='bytes::TakeMut'>TakeMut</a>&lt;T&gt;</code></span><span class='out-of-band'><div class='ghost'></div><a id='src-249' class='srclink' href='../src/bytes/buf/take.rs.html#114-141' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.into_inner' class='method'><span id='into_inner.v' class='invisible'><code>fn <a href='#method.into_inner' class='fnname'>into_inner</a>(self) -&gt; T</code></span></h4>
+<div class='docblock'><p>Consumes this <code>TakeMut</code>, returning the underlying value.</p>
+</div><h4 id='method.get_ref' class='method'><span id='get_ref.v' class='invisible'><code>fn <a href='#method.get_ref' class='fnname'>get_ref</a>(&amp;self) -&gt; &amp;T</code></span></h4>
+<div class='docblock'><p>Gets a reference to the underlying value in this <code>TakeMut</code>.</p>
+</div><h4 id='method.get_mut' class='method'><span id='get_mut.v' class='invisible'><code>fn <a href='#method.get_mut' class='fnname'>get_mut</a>(&amp;mut self) -&gt; &amp;mut T</code></span></h4>
+<div class='docblock'><p>Gets a mutable reference to the underlying value in this <code>TakeMut</code>.</p>
+</div><h4 id='method.limit' class='method'><span id='limit.v' class='invisible'><code>fn <a href='#method.limit' class='fnname'>limit</a>(&amp;self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a></code></span></h4>
+<div class='docblock'><p>Returns the maximum number of bytes that are made available from the
+underlying value.</p>
+</div><h4 id='method.set_limit' class='method'><span id='set_limit.v' class='invisible'><code>fn <a href='#method.set_limit' class='fnname'>set_limit</a>(&amp;mut self, lim: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a>)</code></span></h4>
+<div class='docblock'><p>Sets the maximum number of bytes that are made available from the
+underlying value.</p>
+</div></div><h2 id='implementations'>Trait Implementations</h2><h3 class='impl'><span class='in-band'><code>impl&lt;T:&nbsp;<a class='trait' href='https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html' title='core::fmt::Debug'>Debug</a>&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html' title='core::fmt::Debug'>Debug</a> for <a class='struct' href='../bytes/struct.TakeMut.html' title='bytes::TakeMut'>TakeMut</a>&lt;T&gt;</code></span><span class='out-of-band'><div class='ghost'></div><a id='src-193' class='srclink' href='../src/bytes/buf/take.rs.html#12' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.fmt' class='method'><span id='fmt.v' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html#tymethod.fmt' class='fnname'>fmt</a>(&amp;self, __arg_0: &amp;mut <a class='struct' href='https://doc.rust-lang.org/nightly/core/fmt/struct.Formatter.html' title='core::fmt::Formatter'>Formatter</a>) -&gt; <a class='type' href='https://doc.rust-lang.org/nightly/core/fmt/type.Result.html' title='core::fmt::Result'>Result</a></code></span></h4>
+<div class='docblock'><p>Formats the value using the given formatter.</p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl&lt;T:&nbsp;<a class='trait' href='../bytes/trait.Buf.html' title='bytes::Buf'>Buf</a>&gt; <a class='trait' href='../bytes/trait.Buf.html' title='bytes::Buf'>Buf</a> for <a class='struct' href='../bytes/struct.TakeMut.html' title='bytes::TakeMut'>TakeMut</a>&lt;T&gt;</code></span><span class='out-of-band'><div class='ghost'></div><a id='src-262' class='srclink' href='../src/bytes/buf/take.rs.html#143-155' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.remaining' class='method'><span id='remaining.v' class='invisible'><code>fn <a href='../bytes/trait.Buf.html#tymethod.remaining' class='fnname'>remaining</a>(&amp;self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a></code></span></h4>
+<div class='docblock'><p>Returns the number of bytes that can be accessed from the Buf</p>
+</div><h4 id='method.bytes' class='method'><span id='bytes.v' class='invisible'><code>fn <a href='../bytes/trait.Buf.html#tymethod.bytes' class='fnname'>bytes</a>(&amp;self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;[</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>]</a></code></span></h4>
+<div class='docblock'><p>Returns a slice starting at the current Buf position and of length between 0 and <code>Buf::remaining()</code>. <a href="../bytes/trait.Buf.html#tymethod.bytes">Read more</a></p>
+</div><h4 id='method.advance' class='method'><span id='advance.v' class='invisible'><code>fn <a href='../bytes/trait.Buf.html#tymethod.advance' class='fnname'>advance</a>(&amp;mut self, cnt: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a>)</code></span></h4>
+<div class='docblock'><p>Advance the internal cursor of the Buf</p>
+</div><h4 id='method.has_remaining' class='method'><span id='has_remaining.v' class='invisible'><code>fn <a href='../bytes/trait.Buf.html#method.has_remaining' class='fnname'>has_remaining</a>(&amp;self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></span></h4>
+<div class='docblock'><p>Returns true if there are any more bytes to consume</p>
+</div><h4 id='method.copy_to' class='method'><span id='copy_to.v' class='invisible'><code>fn <a href='../bytes/trait.Buf.html#method.copy_to' class='fnname'>copy_to</a>&lt;S:&nbsp;<a class='trait' href='../bytes/trait.Sink.html' title='bytes::Sink'>Sink</a> + ?<a class='trait' href='https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html' title='core::marker::Sized'>Sized</a>&gt;(&amp;mut self, dst: &amp;mut S) <span class='where'>where Self: <a class='trait' href='https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html' title='core::marker::Sized'>Sized</a></span></code></span></h4>
+<div class='docblock'><p>Copies bytes from <code>self</code> into <code>dst</code> <a href="../bytes/trait.Buf.html#method.copy_to">Read more</a></p>
+</div><h4 id='method.copy_to_slice' class='method'><span id='copy_to_slice.v' class='invisible'><code>fn <a href='../bytes/trait.Buf.html#method.copy_to_slice' class='fnname'>copy_to_slice</a>(&amp;mut self, dst: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;mut [</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>]</a>)</code></span></h4>
+<div class='docblock'><p>Copies bytes from the <code>Buf</code> into the given slice and advance the cursor by the number of bytes copied. <a href="../bytes/trait.Buf.html#method.copy_to_slice">Read more</a></p>
+</div><h4 id='method.peek_u8' class='method'><span id='peek_u8.v' class='invisible'><code>fn <a href='../bytes/trait.Buf.html#method.peek_u8' class='fnname'>peek_u8</a>(&amp;self) -&gt; <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>&gt;</code></span></h4>
+<div class='docblock'><p>Gets an unsigned 8 bit integer from the <code>Buf</code> without advancing the buffer cursor <a href="../bytes/trait.Buf.html#method.peek_u8">Read more</a></p>
+</div><h4 id='method.get_u8' class='method'><span id='get_u8.v' class='invisible'><code>fn <a href='../bytes/trait.Buf.html#method.get_u8' class='fnname'>get_u8</a>(&amp;mut self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a></code></span></h4>
+<div class='docblock'><p>Gets an unsigned 8 bit integer from the <code>Buf</code>.</p>
+</div><h4 id='method.get_i8' class='method'><span id='get_i8.v' class='invisible'><code>fn <a href='../bytes/trait.Buf.html#method.get_i8' class='fnname'>get_i8</a>(&amp;mut self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.i8.html'>i8</a></code></span></h4>
+<div class='docblock'><p>Gets a signed 8 bit integer from the <code>Buf</code>.</p>
+</div><h4 id='method.get_u16' class='method'><span id='get_u16.v' class='invisible'><code>fn <a href='../bytes/trait.Buf.html#method.get_u16' class='fnname'>get_u16</a>&lt;T:&nbsp;<a class='trait' href='../byteorder/trait.ByteOrder.html' title='byteorder::ByteOrder'>ByteOrder</a>&gt;(&amp;mut self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u16.html'>u16</a></code></span></h4>
+<div class='docblock'><p>Gets an unsigned 16 bit integer from the <code>Buf</code></p>
+</div><h4 id='method.get_i16' class='method'><span id='get_i16.v' class='invisible'><code>fn <a href='../bytes/trait.Buf.html#method.get_i16' class='fnname'>get_i16</a>&lt;T:&nbsp;<a class='trait' href='../byteorder/trait.ByteOrder.html' title='byteorder::ByteOrder'>ByteOrder</a>&gt;(&amp;mut self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.i16.html'>i16</a></code></span></h4>
+<div class='docblock'><p>Gets a signed 16 bit integer from the <code>Buf</code></p>
+</div><h4 id='method.get_u32' class='method'><span id='get_u32.v' class='invisible'><code>fn <a href='../bytes/trait.Buf.html#method.get_u32' class='fnname'>get_u32</a>&lt;T:&nbsp;<a class='trait' href='../byteorder/trait.ByteOrder.html' title='byteorder::ByteOrder'>ByteOrder</a>&gt;(&amp;mut self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u32.html'>u32</a></code></span></h4>
+<div class='docblock'><p>Gets an unsigned 32 bit integer from the <code>Buf</code></p>
+</div><h4 id='method.get_i32' class='method'><span id='get_i32.v' class='invisible'><code>fn <a href='../bytes/trait.Buf.html#method.get_i32' class='fnname'>get_i32</a>&lt;T:&nbsp;<a class='trait' href='../byteorder/trait.ByteOrder.html' title='byteorder::ByteOrder'>ByteOrder</a>&gt;(&amp;mut self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.i32.html'>i32</a></code></span></h4>
+<div class='docblock'><p>Gets a signed 32 bit integer from the <code>Buf</code></p>
+</div><h4 id='method.get_u64' class='method'><span id='get_u64.v' class='invisible'><code>fn <a href='../bytes/trait.Buf.html#method.get_u64' class='fnname'>get_u64</a>&lt;T:&nbsp;<a class='trait' href='../byteorder/trait.ByteOrder.html' title='byteorder::ByteOrder'>ByteOrder</a>&gt;(&amp;mut self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u64.html'>u64</a></code></span></h4>
+<div class='docblock'><p>Gets an unsigned 64 bit integer from the <code>Buf</code></p>
+</div><h4 id='method.get_i64' class='method'><span id='get_i64.v' class='invisible'><code>fn <a href='../bytes/trait.Buf.html#method.get_i64' class='fnname'>get_i64</a>&lt;T:&nbsp;<a class='trait' href='../byteorder/trait.ByteOrder.html' title='byteorder::ByteOrder'>ByteOrder</a>&gt;(&amp;mut self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.i64.html'>i64</a></code></span></h4>
+<div class='docblock'><p>Gets a signed 64 bit integer from the <code>Buf</code></p>
+</div><h4 id='method.get_uint' class='method'><span id='get_uint.v' class='invisible'><code>fn <a href='../bytes/trait.Buf.html#method.get_uint' class='fnname'>get_uint</a>&lt;T:&nbsp;<a class='trait' href='../byteorder/trait.ByteOrder.html' title='byteorder::ByteOrder'>ByteOrder</a>&gt;(&amp;mut self, nbytes: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a>) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u64.html'>u64</a></code></span></h4>
+<div class='docblock'><p>Gets an unsigned n-bytes integer from the <code>Buf</code></p>
+</div><h4 id='method.get_int' class='method'><span id='get_int.v' class='invisible'><code>fn <a href='../bytes/trait.Buf.html#method.get_int' class='fnname'>get_int</a>&lt;T:&nbsp;<a class='trait' href='../byteorder/trait.ByteOrder.html' title='byteorder::ByteOrder'>ByteOrder</a>&gt;(&amp;mut self, nbytes: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a>) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.i64.html'>i64</a></code></span></h4>
+<div class='docblock'><p>Gets a signed n-bytes integer from the <code>Buf</code></p>
+</div><h4 id='method.get_f32' class='method'><span id='get_f32.v' class='invisible'><code>fn <a href='../bytes/trait.Buf.html#method.get_f32' class='fnname'>get_f32</a>&lt;T:&nbsp;<a class='trait' href='../byteorder/trait.ByteOrder.html' title='byteorder::ByteOrder'>ByteOrder</a>&gt;(&amp;mut self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.f32.html'>f32</a></code></span></h4>
+<div class='docblock'><p>Gets a IEEE754 single-precision (4 bytes) floating point number from the <code>Buf</code> <a href="../bytes/trait.Buf.html#method.get_f32">Read more</a></p>
+</div><h4 id='method.get_f64' class='method'><span id='get_f64.v' class='invisible'><code>fn <a href='../bytes/trait.Buf.html#method.get_f64' class='fnname'>get_f64</a>&lt;T:&nbsp;<a class='trait' href='../byteorder/trait.ByteOrder.html' title='byteorder::ByteOrder'>ByteOrder</a>&gt;(&amp;mut self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.f64.html'>f64</a></code></span></h4>
+<div class='docblock'><p>Gets a IEEE754 double-precision (8 bytes) floating point number from the <code>Buf</code> <a href="../bytes/trait.Buf.html#method.get_f64">Read more</a></p>
+</div><h4 id='method.by_ref' class='method'><span id='by_ref.v' class='invisible'><code>fn <a href='../bytes/trait.Buf.html#method.by_ref' class='fnname'>by_ref</a>(&amp;mut self) -&gt; &amp;mut Self <span class='where'>where Self: <a class='trait' href='https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html' title='core::marker::Sized'>Sized</a></span></code></span></h4>
+<div class='docblock'><p>Creates a &quot;by reference&quot; adaptor for this instance of Buf</p>
+</div><h4 id='method.take' class='method'><span id='take.v' class='invisible'><code>fn <a href='../bytes/trait.Buf.html#method.take' class='fnname'>take</a>(self, limit: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a>) -&gt; <a class='struct' href='../bytes/struct.Take.html' title='bytes::Take'>Take</a>&lt;Self&gt; <span class='where'>where Self: <a class='trait' href='https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html' title='core::marker::Sized'>Sized</a></span></code></span></h4>
+<div class='docblock'><p>Create an adapter which will limit at most <code>limit</code> bytes from it.</p>
+</div><h4 id='method.reader' class='method'><span id='reader.v' class='invisible'><code>fn <a href='../bytes/trait.Buf.html#method.reader' class='fnname'>reader</a>(self) -&gt; <a class='struct' href='../bytes/struct.Reader.html' title='bytes::Reader'>Reader</a>&lt;Self&gt; <span class='where'>where Self: <a class='trait' href='https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html' title='core::marker::Sized'>Sized</a></span></code></span></h4>
+<div class='docblock'><p>Return a <code>Reader</code> for the value. Allows using a <code>Buf</code> as an <code>io::Read</code></p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl&lt;T:&nbsp;<a class='trait' href='../bytes/trait.BufMut.html' title='bytes::BufMut'>BufMut</a>&gt; <a class='trait' href='../bytes/trait.BufMut.html' title='bytes::BufMut'>BufMut</a> for <a class='struct' href='../bytes/struct.TakeMut.html' title='bytes::TakeMut'>TakeMut</a>&lt;T&gt;</code></span><span class='out-of-band'><div class='ghost'></div><a id='src-271' class='srclink' href='../src/bytes/buf/take.rs.html#157-171' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.remaining_mut' class='method'><span id='remaining_mut.v' class='invisible'><code>fn <a href='../bytes/trait.BufMut.html#tymethod.remaining_mut' class='fnname'>remaining_mut</a>(&amp;self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a></code></span></h4>
+<div class='docblock'><p>Returns the number of bytes that can be written to the BufMut</p>
+</div><h4 id='method.bytes_mut' class='method'><span id='bytes_mut.v' class='invisible'><code>unsafe fn <a href='../bytes/trait.BufMut.html#tymethod.bytes_mut' class='fnname'>bytes_mut</a>(&amp;mut self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;mut [</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>]</a></code></span></h4>
+<div class='docblock'><p>Returns a mutable slice starting at the current BufMut position and of length between 0 and <code>BufMut::remaining()</code>. <a href="../bytes/trait.BufMut.html#tymethod.bytes_mut">Read more</a></p>
+</div><h4 id='method.advance_mut' class='method'><span id='advance_mut.v' class='invisible'><code>unsafe fn <a href='../bytes/trait.BufMut.html#tymethod.advance_mut' class='fnname'>advance_mut</a>(&amp;mut self, cnt: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a>)</code></span></h4>
+<div class='docblock'><p>Advance the internal cursor of the BufMut</p>
+</div><h4 id='method.has_remaining_mut' class='method'><span id='has_remaining_mut.v' class='invisible'><code>fn <a href='../bytes/trait.BufMut.html#method.has_remaining_mut' class='fnname'>has_remaining_mut</a>(&amp;self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></span></h4>
+<div class='docblock'><p>Returns true iff there is any more space for bytes to be written</p>
+</div><h4 id='method.copy_from' class='method'><span id='copy_from.v' class='invisible'><code>fn <a href='../bytes/trait.BufMut.html#method.copy_from' class='fnname'>copy_from</a>&lt;S:&nbsp;<a class='trait' href='../bytes/trait.Source.html' title='bytes::Source'>Source</a>&gt;(&amp;mut self, src: S) <span class='where'>where Self: <a class='trait' href='https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html' title='core::marker::Sized'>Sized</a></span></code></span></h4>
+<div class='docblock'><p>Copies bytes from <code>src</code> into <code>self</code> <a href="../bytes/trait.BufMut.html#method.copy_from">Read more</a></p>
+</div><h4 id='method.copy_from_slice' class='method'><span id='copy_from_slice.v' class='invisible'><code>fn <a href='../bytes/trait.BufMut.html#method.copy_from_slice' class='fnname'>copy_from_slice</a>(&amp;mut self, src: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;[</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>]</a>)</code></span></h4>
+<div class='docblock'><p>Copies bytes from the given slice into the <code>BufMut</code> and advance the cursor by the number of bytes written. Returns the number of bytes written. <a href="../bytes/trait.BufMut.html#method.copy_from_slice">Read more</a></p>
+</div><h4 id='method.put_str' class='method'><span id='put_str.v' class='invisible'><code>fn <a href='../bytes/trait.BufMut.html#method.put_str' class='fnname'>put_str</a>(&amp;mut self, src: &amp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>)</code></span></h4>
+<div class='docblock'><p>Writes the given string into self. <a href="../bytes/trait.BufMut.html#method.put_str">Read more</a></p>
+</div><h4 id='method.put_u8' class='method'><span id='put_u8.v' class='invisible'><code>fn <a href='../bytes/trait.BufMut.html#method.put_u8' class='fnname'>put_u8</a>(&amp;mut self, n: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>)</code></span></h4>
+<div class='docblock'><p>Writes an unsigned 8 bit integer to the BufMut.</p>
+</div><h4 id='method.put_i8' class='method'><span id='put_i8.v' class='invisible'><code>fn <a href='../bytes/trait.BufMut.html#method.put_i8' class='fnname'>put_i8</a>(&amp;mut self, n: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.i8.html'>i8</a>)</code></span></h4>
+<div class='docblock'><p>Writes a signed 8 bit integer to the BufMut.</p>
+</div><h4 id='method.put_u16' class='method'><span id='put_u16.v' class='invisible'><code>fn <a href='../bytes/trait.BufMut.html#method.put_u16' class='fnname'>put_u16</a>&lt;T:&nbsp;<a class='trait' href='../byteorder/trait.ByteOrder.html' title='byteorder::ByteOrder'>ByteOrder</a>&gt;(&amp;mut self, n: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u16.html'>u16</a>)</code></span></h4>
+<div class='docblock'><p>Writes an unsigned 16 bit integer to the BufMut.</p>
+</div><h4 id='method.put_i16' class='method'><span id='put_i16.v' class='invisible'><code>fn <a href='../bytes/trait.BufMut.html#method.put_i16' class='fnname'>put_i16</a>&lt;T:&nbsp;<a class='trait' href='../byteorder/trait.ByteOrder.html' title='byteorder::ByteOrder'>ByteOrder</a>&gt;(&amp;mut self, n: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.i16.html'>i16</a>)</code></span></h4>
+<div class='docblock'><p>Writes a signed 16 bit integer to the BufMut.</p>
+</div><h4 id='method.put_u32' class='method'><span id='put_u32.v' class='invisible'><code>fn <a href='../bytes/trait.BufMut.html#method.put_u32' class='fnname'>put_u32</a>&lt;T:&nbsp;<a class='trait' href='../byteorder/trait.ByteOrder.html' title='byteorder::ByteOrder'>ByteOrder</a>&gt;(&amp;mut self, n: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u32.html'>u32</a>)</code></span></h4>
+<div class='docblock'><p>Writes an unsigned 32 bit integer to the BufMut.</p>
+</div><h4 id='method.put_i32' class='method'><span id='put_i32.v' class='invisible'><code>fn <a href='../bytes/trait.BufMut.html#method.put_i32' class='fnname'>put_i32</a>&lt;T:&nbsp;<a class='trait' href='../byteorder/trait.ByteOrder.html' title='byteorder::ByteOrder'>ByteOrder</a>&gt;(&amp;mut self, n: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.i32.html'>i32</a>)</code></span></h4>
+<div class='docblock'><p>Writes a signed 32 bit integer to the BufMut.</p>
+</div><h4 id='method.put_u64' class='method'><span id='put_u64.v' class='invisible'><code>fn <a href='../bytes/trait.BufMut.html#method.put_u64' class='fnname'>put_u64</a>&lt;T:&nbsp;<a class='trait' href='../byteorder/trait.ByteOrder.html' title='byteorder::ByteOrder'>ByteOrder</a>&gt;(&amp;mut self, n: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u64.html'>u64</a>)</code></span></h4>
+<div class='docblock'><p>Writes an unsigned 64 bit integer to the BufMut.</p>
+</div><h4 id='method.put_i64' class='method'><span id='put_i64.v' class='invisible'><code>fn <a href='../bytes/trait.BufMut.html#method.put_i64' class='fnname'>put_i64</a>&lt;T:&nbsp;<a class='trait' href='../byteorder/trait.ByteOrder.html' title='byteorder::ByteOrder'>ByteOrder</a>&gt;(&amp;mut self, n: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.i64.html'>i64</a>)</code></span></h4>
+<div class='docblock'><p>Writes a signed 64 bit integer to the BufMut.</p>
+</div><h4 id='method.put_uint' class='method'><span id='put_uint.v' class='invisible'><code>fn <a href='../bytes/trait.BufMut.html#method.put_uint' class='fnname'>put_uint</a>&lt;T:&nbsp;<a class='trait' href='../byteorder/trait.ByteOrder.html' title='byteorder::ByteOrder'>ByteOrder</a>&gt;(&amp;mut self, n: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u64.html'>u64</a>, nbytes: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a>)</code></span></h4>
+<div class='docblock'><p>Writes an unsigned n-bytes integer to the BufMut. <a href="../bytes/trait.BufMut.html#method.put_uint">Read more</a></p>
+</div><h4 id='method.put_int' class='method'><span id='put_int.v' class='invisible'><code>fn <a href='../bytes/trait.BufMut.html#method.put_int' class='fnname'>put_int</a>&lt;T:&nbsp;<a class='trait' href='../byteorder/trait.ByteOrder.html' title='byteorder::ByteOrder'>ByteOrder</a>&gt;(&amp;mut self, n: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.i64.html'>i64</a>, nbytes: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a>)</code></span></h4>
+<div class='docblock'><p>Writes a signed n-bytes integer to the BufMut. <a href="../bytes/trait.BufMut.html#method.put_int">Read more</a></p>
+</div><h4 id='method.put_f32' class='method'><span id='put_f32.v' class='invisible'><code>fn <a href='../bytes/trait.BufMut.html#method.put_f32' class='fnname'>put_f32</a>&lt;T:&nbsp;<a class='trait' href='../byteorder/trait.ByteOrder.html' title='byteorder::ByteOrder'>ByteOrder</a>&gt;(&amp;mut self, n: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.f32.html'>f32</a>)</code></span></h4>
+<div class='docblock'><p>Writes a IEEE754 single-precision (4 bytes) floating point number to the BufMut. <a href="../bytes/trait.BufMut.html#method.put_f32">Read more</a></p>
+</div><h4 id='method.put_f64' class='method'><span id='put_f64.v' class='invisible'><code>fn <a href='../bytes/trait.BufMut.html#method.put_f64' class='fnname'>put_f64</a>&lt;T:&nbsp;<a class='trait' href='../byteorder/trait.ByteOrder.html' title='byteorder::ByteOrder'>ByteOrder</a>&gt;(&amp;mut self, n: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.f64.html'>f64</a>)</code></span></h4>
+<div class='docblock'><p>Writes a IEEE754 double-precision (8 bytes) floating point number to the BufMut. <a href="../bytes/trait.BufMut.html#method.put_f64">Read more</a></p>
+</div><h4 id='method.by_ref-1' class='method'><span id='by_ref.v-1' class='invisible'><code>fn <a href='../bytes/trait.BufMut.html#method.by_ref' class='fnname'>by_ref</a>(&amp;mut self) -&gt; &amp;mut Self <span class='where'>where Self: <a class='trait' href='https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html' title='core::marker::Sized'>Sized</a></span></code></span></h4>
+<div class='docblock'><p>Creates a &quot;by reference&quot; adaptor for this instance of BufMut</p>
+</div><h4 id='method.take_mut' class='method'><span id='take_mut.v' class='invisible'><code>fn <a href='../bytes/trait.BufMut.html#method.take_mut' class='fnname'>take_mut</a>(self, limit: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a>) -&gt; <a class='struct' href='../bytes/struct.TakeMut.html' title='bytes::TakeMut'>TakeMut</a>&lt;Self&gt; <span class='where'>where Self: <a class='trait' href='https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html' title='core::marker::Sized'>Sized</a></span></code></span></h4>
+<div class='docblock'><p>Create an adapter which will limit at most <code>limit</code> bytes from it.</p>
+</div><h4 id='method.writer' class='method'><span id='writer.v' class='invisible'><code>fn <a href='../bytes/trait.BufMut.html#method.writer' class='fnname'>writer</a>(self) -&gt; <a class='struct' href='../bytes/struct.Writer.html' title='bytes::Writer'>Writer</a>&lt;Self&gt; <span class='where'>where Self: <a class='trait' href='https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html' title='core::marker::Sized'>Sized</a></span></code></span></h4>
+<div class='docblock'><p>Return a <code>Write</code> for the value. Allows using a <code>BufMut</code> as an <code>io::Write</code> <a href="../bytes/trait.BufMut.html#method.writer">Read more</a></p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl&lt;T:&nbsp;<a class='trait' href='../bytes/trait.BufMut.html' title='bytes::BufMut'>BufMut</a>&gt; <a class='trait' href='https://doc.rust-lang.org/nightly/core/fmt/trait.Write.html' title='core::fmt::Write'>Write</a> for <a class='struct' href='../bytes/struct.TakeMut.html' title='bytes::TakeMut'>TakeMut</a>&lt;T&gt;</code></span><span class='out-of-band'><div class='ghost'></div><a id='src-281' class='srclink' href='../src/bytes/buf/take.rs.html#173-182' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.write_str' class='method'><span id='write_str.v' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/fmt/trait.Write.html#tymethod.write_str' class='fnname'>write_str</a>(&amp;mut self, s: &amp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>) -&gt; <a class='type' href='https://doc.rust-lang.org/nightly/core/fmt/type.Result.html' title='core::fmt::Result'>Result</a></code></span></h4>
+<div class='docblock'><p>Writes a slice of bytes into this writer, returning whether the write succeeded. <a href="https://doc.rust-lang.org/nightly/core/fmt/trait.Write.html#tymethod.write_str">Read more</a></p>
+</div><h4 id='method.write_fmt' class='method'><span id='write_fmt.v' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/fmt/trait.Write.html#method.write_fmt' class='fnname'>write_fmt</a>(&amp;mut self, args: <a class='struct' href='https://doc.rust-lang.org/nightly/core/fmt/struct.Arguments.html' title='core::fmt::Arguments'>Arguments</a>) -&gt; <a class='type' href='https://doc.rust-lang.org/nightly/core/fmt/type.Result.html' title='core::fmt::Result'>Result</a></code></span></h4>
+<div class='docblock'><p>Glue for usage of the <code>write!</code> macro with implementors of this trait. <a href="https://doc.rust-lang.org/nightly/core/fmt/trait.Write.html#method.write_fmt">Read more</a></p>
+</div><h4 id='method.write_char' class='method'><span id='write_char.v' class='invisible'><code>fn <a href='https://doc.rust-lang.org/nightly/core/fmt/trait.Write.html#method.write_char' class='fnname'>write_char</a>(&amp;mut self, c: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.char.html'>char</a>) -&gt; <a class='enum' href='https://doc.rust-lang.org/nightly/core/result/enum.Result.html' title='core::result::Result'>Result</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>()</a>,&nbsp;<a class='struct' href='https://doc.rust-lang.org/nightly/core/fmt/struct.Error.html' title='core::fmt::Error'>Error</a>&gt;</code><div class='since' title='Stable since Rust version 1.1.0'>1.1.0</div></span></h4>
+<div class='docblock'><p>Writes a <code>char</code> into this writer, returning whether the write succeeded. <a href="https://doc.rust-lang.org/nightly/core/fmt/trait.Write.html#method.write_char">Read more</a></p>
+</div></div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt>?</dt>
+                    <dd>Show this help dialog</dd>
+                    <dt>S</dt>
+                    <dd>Focus the search field</dd>
+                    <dt>&larrb;</dt>
+                    <dd>Move up in search results</dd>
+                    <dt>&rarrb;</dt>
+                    <dd>Move down in search results</dd>
+                    <dt>&#9166;</dt>
+                    <dd>Go to active search result</dd>
+                    <dt>+</dt>
+                    <dd>Collapse/expand all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../";
+        window.currentCrate = "bytes";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../jquery.js"></script>
+    <script src="../main.js"></script>
+    
+    <script defer src="../search-index.js"></script>
+</body>
+</html>

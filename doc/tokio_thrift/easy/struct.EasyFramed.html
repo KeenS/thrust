@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `EasyFramed` struct in crate `tokio_thrift`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, EasyFramed">
+
+    <title>tokio_thrift::easy::EasyFramed - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../rustdoc.css">
+    <link rel="stylesheet" type="text/css" href="../../main.css">
+    
+
+    
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        
+        <p class='location'><a href='../index.html'>tokio_thrift</a>::<wbr><a href='index.html'>easy</a></p><script>window.sidebarCurrent = {name: 'EasyFramed', ty: 'struct', relpath: ''};</script><script defer src="sidebar-items.js"></script>
+    </nav>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content struct">
+<h1 class='fqn'><span class='in-band'>Struct <a href='../index.html'>tokio_thrift</a>::<wbr><a href='index.html'>easy</a>::<wbr><a class='struct' href=''>EasyFramed</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a id='src-917' class='srclink' href='../../src/tokio_thrift/src/easy.rs.html#222-230' title='goto source code'>[src]</a></span></h1>
+<pre class='rust struct'>pub struct EasyFramed&lt;T,&nbsp;P,&nbsp;S&gt; { /* fields omitted */ }</pre><div class='docblock'><p>An implementation of the <code>FramedIo</code> trait building on instances of the
+<code>Parse</code> and <code>Serialize</code> traits.</p>
+
+<p>Many I/O streams are simply a framed protocol on both the inbound and
+outbound halves. In essence the underlying stream of bytes can be converted
+to a stream of <em>frames</em>. This way instead of reading or writing bytes a
+stream deals with reading and writing frames.</p>
+
+<p>This struct is essentially a convenience implementation of the <code>FramedIo</code>
+which only requires knowledge of how to parse and serialize types. It is
+constructed with an arbitrary <code>Io</code> instance along with how to parse and
+serialize the frames that this <code>EasyFramed</code> will be yielding.</p>
+
+<p>This implementation of <code>FramedIo</code> uses the <code>EasyBuf</code> type from the <code>bytes</code>
+crate for the backing storage, which should allow for zero-copy parsing
+where possible.</p>
+</div><h2 id='methods'>Methods</h2><h3 class='impl'><span class='in-band'><code>impl&lt;T,&nbsp;P,&nbsp;S&gt; <a class='struct' href='../../tokio_thrift/easy/struct.EasyFramed.html' title='tokio_thrift::easy::EasyFramed'>EasyFramed</a>&lt;T,&nbsp;P,&nbsp;S&gt; <span class='where'>where T: <a class='trait' href='../../tokio_core/io/trait.Io.html' title='tokio_core::io::Io'>Io</a>, P: <a class='trait' href='../../tokio_thrift/easy/trait.Parse.html' title='tokio_thrift::easy::Parse'>Parse</a>, S: <a class='trait' href='../../tokio_thrift/easy/trait.Serialize.html' title='tokio_thrift::easy::Serialize'>Serialize</a></span></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-945' class='srclink' href='../../src/tokio_thrift/src/easy.rs.html#308-367' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.new' class='method'><span id='new.v' class='invisible'><code>fn <a href='#method.new' class='fnname'>new</a>(upstream: T, parse: P, serialize: S) -&gt; <a class='struct' href='../../tokio_thrift/easy/struct.EasyFramed.html' title='tokio_thrift::easy::EasyFramed'>EasyFramed</a>&lt;T,&nbsp;P,&nbsp;S&gt;</code></span></h4>
+<div class='docblock'><p>Creates a new instance of <code>EasyFramed</code> from the given component pieces.</p>
+
+<p>This method will create a new instance of <code>EasyFramed</code> which implements
+<code>FramedIo</code> for reading and writing frames from an underlying I/O stream.
+The <code>upstream</code> argument here is the byte-based I/O stream that it will
+be operating on. Data will be read from this stream and parsed with
+<code>parse</code> into frames. Frames written to this instance will be serialized
+by <code>serialize</code> and then written to <code>upstream</code>.</p>
+
+<p>The <code>rd</code> and <code>wr</code> buffers provided are used for reading and writing
+bytes and provide a small amount of control over how buffering happens.</p>
+</div><h4 id='method.get_ref' class='method'><span id='get_ref.v' class='invisible'><code>fn <a href='#method.get_ref' class='fnname'>get_ref</a>(&amp;self) -&gt; &amp;T</code></span></h4>
+<div class='docblock'><p>Returns a reference to the underlying I/O stream wrapped by <code>EasyFramed</code>.</p>
+
+<p>Note that care should be taken to not tamper with the underlying stream
+of data coming in as it may corrupt the stream of frames otherwise being
+worked with.</p>
+</div><h4 id='method.get_mut' class='method'><span id='get_mut.v' class='invisible'><code>fn <a href='#method.get_mut' class='fnname'>get_mut</a>(&amp;mut self) -&gt; &amp;mut T</code></span></h4>
+<div class='docblock'><p>Returns a mutable reference to the underlying I/O stream wrapped by
+<code>EasyFramed</code>.</p>
+
+<p>Note that care should be taken to not tamper with the underlying stream
+of data coming in as it may corrupt the stream of frames otherwise being
+worked with.</p>
+</div><h4 id='method.into_inner' class='method'><span id='into_inner.v' class='invisible'><code>fn <a href='#method.into_inner' class='fnname'>into_inner</a>(self) -&gt; T</code></span></h4>
+<div class='docblock'><p>Consumes the <code>EasyFramed</code>, returning its underlying I/O stream.</p>
+
+<p>Note that care should be taken to not tamper with the underlying stream
+of data coming in as it may corrupt the stream of frames otherwise being
+worked with.</p>
+</div></div><h2 id='implementations'>Trait Implementations</h2><h3 class='impl'><span class='in-band'><code>impl&lt;T,&nbsp;P,&nbsp;S&gt; <a class='trait' href='../../tokio_core/io/trait.FramedIo.html' title='tokio_core::io::FramedIo'>FramedIo</a> for <a class='struct' href='../../tokio_thrift/easy/struct.EasyFramed.html' title='tokio_thrift::easy::EasyFramed'>EasyFramed</a>&lt;T,&nbsp;P,&nbsp;S&gt; <span class='where'>where T: <a class='trait' href='../../tokio_core/io/trait.Io.html' title='tokio_core::io::Io'>Io</a>, P: <a class='trait' href='../../tokio_thrift/easy/trait.Parse.html' title='tokio_thrift::easy::Parse'>Parse</a>, S: <a class='trait' href='../../tokio_thrift/easy/trait.Serialize.html' title='tokio_thrift::easy::Serialize'>Serialize</a></span></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-962' class='srclink' href='../../src/tokio_thrift/src/easy.rs.html#369-467' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='associatedtype.In' class='type'><span id='In.t' class='invisible'><code>type <a href='../../tokio_core/io/trait.FramedIo.html#associatedtype.In' class='type'>In</a> = S::In</code></span></h4>
+<div class='docblock'><p>Messages written</p>
+</div><h4 id='associatedtype.Out' class='type'><span id='Out.t' class='invisible'><code>type <a href='../../tokio_core/io/trait.FramedIo.html#associatedtype.Out' class='type'>Out</a> = <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;P::Out&gt;</code></span></h4>
+<div class='docblock'><p>Messages read</p>
+</div><h4 id='method.poll_read' class='method'><span id='poll_read.v' class='invisible'><code>fn <a href='../../tokio_core/io/trait.FramedIo.html#tymethod.poll_read' class='fnname'>poll_read</a>(&amp;mut self) -&gt; <a class='enum' href='../../futures/poll/enum.Async.html' title='futures::poll::Async'>Async</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>()</a>&gt;</code></span></h4>
+<div class='docblock'><p>Tests to see if this <code>FramedIo</code> may be readable.</p>
+</div><h4 id='method.read' class='method'><span id='read.v' class='invisible'><code>fn <a href='../../tokio_core/io/trait.FramedIo.html#tymethod.read' class='fnname'>read</a>(&amp;mut self) -&gt; <a class='type' href='../../futures/poll/type.Poll.html' title='futures::poll::Poll'>Poll</a>&lt;Self::Out,&nbsp;<a class='struct' href='https://doc.rust-lang.org/nightly/std/io/error/struct.Error.html' title='std::io::error::Error'>Error</a>&gt;</code></span></h4>
+<div class='docblock'><p>Read a message frame from the <code>FramedIo</code></p>
+</div><h4 id='method.poll_write' class='method'><span id='poll_write.v' class='invisible'><code>fn <a href='../../tokio_core/io/trait.FramedIo.html#tymethod.poll_write' class='fnname'>poll_write</a>(&amp;mut self) -&gt; <a class='enum' href='../../futures/poll/enum.Async.html' title='futures::poll::Async'>Async</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>()</a>&gt;</code></span></h4>
+<div class='docblock'><p>Tests to see if this <code>FramedIo</code> may be writable. <a href="../../tokio_core/io/trait.FramedIo.html#tymethod.poll_write">Read more</a></p>
+</div><h4 id='method.write' class='method'><span id='write.v' class='invisible'><code>fn <a href='../../tokio_core/io/trait.FramedIo.html#tymethod.write' class='fnname'>write</a>(&amp;mut self, msg: Self::In) -&gt; <a class='type' href='../../futures/poll/type.Poll.html' title='futures::poll::Poll'>Poll</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>()</a>,&nbsp;<a class='struct' href='https://doc.rust-lang.org/nightly/std/io/error/struct.Error.html' title='std::io::error::Error'>Error</a>&gt;</code></span></h4>
+<div class='docblock'><p>Write a message frame to the <code>FramedIo</code></p>
+</div><h4 id='method.flush' class='method'><span id='flush.v' class='invisible'><code>fn <a href='../../tokio_core/io/trait.FramedIo.html#tymethod.flush' class='fnname'>flush</a>(&amp;mut self) -&gt; <a class='type' href='../../futures/poll/type.Poll.html' title='futures::poll::Poll'>Poll</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>()</a>,&nbsp;<a class='struct' href='https://doc.rust-lang.org/nightly/std/io/error/struct.Error.html' title='std::io::error::Error'>Error</a>&gt;</code></span></h4>
+<div class='docblock'><p>Flush pending writes or do any other work not driven by reading / writing. <a href="../../tokio_core/io/trait.FramedIo.html#tymethod.flush">Read more</a></p>
+</div></div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt>?</dt>
+                    <dd>Show this help dialog</dd>
+                    <dt>S</dt>
+                    <dd>Focus the search field</dd>
+                    <dt>&larrb;</dt>
+                    <dd>Move up in search results</dd>
+                    <dt>&rarrb;</dt>
+                    <dd>Move down in search results</dd>
+                    <dt>&#9166;</dt>
+                    <dd>Go to active search result</dd>
+                    <dt>+</dt>
+                    <dd>Collapse/expand all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../../";
+        window.currentCrate = "tokio_thrift";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../../jquery.js"></script>
+    <script src="../../main.js"></script>
+    
+    <script defer src="../../search-index.js"></script>
+</body>
+</html>

@@ -1,0 +1,1 @@
+initSidebarItems({"mod":[["multiplex","An \"easy\" multiplexing module"],["pipeline","An \"easy\" pipelining module"]],"struct":[["EasyClient","A client which does not support streaming bodies."],["EasyResponse","Future returned from `Client::call`."]]});
