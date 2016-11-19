@@ -188,7 +188,7 @@ pub struct ServiceMethod {
     pub ident: String,
     pub ty: Ty,
     pub args: Vec<StructField>,
-    pub throws: Vec<StructField>,
+    pub throws: Option<Vec<StructField>>,
 }
 
 #[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
@@ -221,11 +221,6 @@ pub struct Struct {
 #[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Exception {
     pub ident: String,
-    pub fields: Vec<StructField>,
-}
-
-#[derive(Debug, PartialEq, RustcEncodable, RustcDecodable)]
-pub struct Throws {
     pub fields: Vec<StructField>,
 }
 
@@ -407,15 +402,14 @@ named!(exception <Exception>, chain!(
 named!(service <Service>, chain!(
     tag!("service")  ~ blank ~
         id: identifier ~ blank? ~
-        // ext: chain!(tag!("extends") ~ blank ~
-        //             exid: identifier, || exid)? ~
-        // blank? ~
+        ext: chain!(tag!("extends") ~ blank ~
+                    exid: identifier, || exid)? ~
+        blank? ~
         tag!("{") ~ blank? ~
         functions: many0!(chain!(f: function ~ blank?, || f)) ~
         tag!("}") ,
     || Service{
-        extends: None,
-//        extends: ext,
+        extends: ext,
         ident: id,
         methods: functions,
     }));
@@ -451,7 +445,7 @@ named!(function <ServiceMethod>, chain!(
         tag!("(") ~ blank? ~
         args: many0!(chain!(f: field ~ blank?, || f)) ~
         tag!(")")  ~
-//        throws: chain!(blank? ~ throws, || throws)? ~
+        throws: chain!(blank? ~ th: throws, || th)? ~
         chain!(blank? ~ list_separator, ||())?
         ,
     || {
@@ -461,19 +455,19 @@ named!(function <ServiceMethod>, chain!(
             ident: id,
             ty: ty,
             args: args,
-            throws: vec![],
+            throws: throws,
         }}));
 
 named!(function_type <Ty>, alt!(
     tag!("void") => {|_| Ty::Void} |
     field_type));
 
-named!(throws <Throws>, chain!(
+named!(throws < Vec<StructField> >, chain!(
     tag!("throws") ~ blank? ~
         tag!("(") ~ blank? ~
         fields: many0!(chain!(f: field ~ blank?, || f)) ~
         tag!(")"),
-    || Throws{fields: fields}));
+    || fields));
 
 named!(field_type <Ty>, alt!(
     base_type |
@@ -879,7 +873,7 @@ methods: vec![
         ident: "foo".to_string(),
         ty: Ty::Void,
         args: vec![],
-        throws: vec![],
+        throws: None,
     }
 ],
 });
@@ -896,7 +890,7 @@ methods: vec![
         ident: "foo".to_string(),
         ty: Ty::Void,
         args: vec![],
-        throws: vec![],
+        throws: None,
     }
 ],
 });
@@ -914,14 +908,14 @@ methods: vec![
         ident: "foo".to_string(),
         ty: Ty::Void,
         args: vec![],
-        throws: vec![],
+        throws: None,
     },
     ServiceMethod {
         oneway: false,
         ident: "bar".to_string(),
         ty: Ty::Void,
         args: vec![],
-        throws: vec![],
+        throws: None,
     }
 ],
 });
@@ -939,14 +933,14 @@ methods: vec![
         ident: "foo".to_string(),
         ty: Ty::Void,
         args: vec![],
-        throws: vec![],
+        throws: None,
     },
     ServiceMethod {
         oneway: false,
         ident: "bar".to_string(),
         ty: Ty::Void,
         args: vec![],
-        throws: vec![],
+        throws: None,
     }
 ],
 });
@@ -964,15 +958,33 @@ methods: vec![
         ident: "foo".to_string(),
         ty: Ty::Void,
         args: vec![],
-        throws: vec![],
+        throws: None,
     },
     ServiceMethod {
         oneway: false,
         ident: "bar".to_string(),
         ty: Ty::Void,
         args: vec![],
-        throws: vec![],
+        throws: None,
     }
+],
+});
+
+
+    assert_eq!(service(b"service Foo extends some.Bar {
+void foo(),
+}
+").unwrap().1, Service {
+extends: Some("some.Bar".to_string()),
+ident: "Foo".to_string(),
+methods: vec![
+    ServiceMethod {
+        oneway: false,
+        ident: "foo".to_string(),
+        ty: Ty::Void,
+        args: vec![],
+        throws: None,
+    },
 ],
 });
 
@@ -1041,7 +1053,7 @@ fn test_function() {
                    ident: "foo".to_string(),
                    ty: Ty::I32,
                    args: vec![],
-                   throws: vec![],
+                   throws: None,
                });
 
     assert_eq!(function(b"i32 foo(1: string bar)").unwrap().1,
@@ -1058,7 +1070,7 @@ fn test_function() {
                            value: None,
                        },
                    ],
-                   throws: vec![],
+                   throws: None,
                });
     assert_eq!(function(b"i32 foo(1: required string bar)").unwrap().1,
                ServiceMethod {
@@ -1074,7 +1086,7 @@ fn test_function() {
                            value: None,
                        },
                    ],
-                   throws: vec![],
+                   throws: None,
                });
     assert_eq!(function(b"void foo(1: required string bar),").unwrap().1,
                ServiceMethod {
@@ -1090,7 +1102,7 @@ fn test_function() {
                            value: None,
                        },
                    ],
-                   throws: vec![],
+                   throws: None,
                });
     assert_eq!(function(b"oneway void foo(1: required string bar);").unwrap().1,
                ServiceMethod {
@@ -1106,7 +1118,7 @@ fn test_function() {
                            value: None,
                        },
                    ],
-                   throws: vec![],
+                   throws: None,
                });
     assert_eq!(function(b"oneway i32 foo(1: required string bar);").unwrap().1,
                ServiceMethod {
@@ -1122,7 +1134,7 @@ fn test_function() {
                            value: None,
                        },
                    ],
-                   throws: vec![],
+                   throws: None,
                });
     assert_eq!(function(b"i32 foo(1: required string bar; optional binary baz)").unwrap().1,
                ServiceMethod {
@@ -1145,7 +1157,7 @@ fn test_function() {
                            value: None,
                        },
                    ],
-                   throws: vec![],
+                   throws: None,
                });
     assert_eq!(function(b"i32 foo(1: required string bar, 2: optional binary baz)").unwrap().1,
                ServiceMethod {
@@ -1168,7 +1180,7 @@ fn test_function() {
                            value: None,
                        },
                    ],
-                   throws: vec![],
+                   throws: None,
                });
     assert_eq!(function(b"i32 foo(1: required string bar) throws (1: list<i32> pee)").unwrap().1,
                ServiceMethod {
@@ -1191,7 +1203,7 @@ fn test_function() {
                            value: None,
                        },
                    ],
-                   throws: vec![
+                   throws: Some(vec![
                        StructField {
                            seq: Some(1),
                            optional: false,
@@ -1199,7 +1211,7 @@ fn test_function() {
                            ty: Ty::List(Box::new(Ty::I32)),
                            value: None,
                        }
-                   ],
+                   ]),
                });
 
     assert_eq!(function(b"i32 foo(1: required string bar) throws (1: list<i32> pee, 2: optional set<byte> poo),").unwrap().1,
@@ -1223,7 +1235,7 @@ fn test_function() {
                            value: None,
                        },
                    ],
-                   throws: vec![
+                   throws: Some(vec![
                        StructField {
                            seq: Some(1),
                            optional: false,
@@ -1239,7 +1251,7 @@ fn test_function() {
                            value: None,
                        },
 
-                   ],
+                   ]),
                });
 }
 
@@ -1253,32 +1265,35 @@ fn test_function_type() {
 
 #[test]
 fn test_throws() {
-    assert_eq!(throws(b"throws(1: string foo)").unwrap().1, Throws {
-        fields: vec![StructField {seq: Some(1),
-                                  optional: false,
-                                  ident: "foo".to_string(),
-                                  ty: Ty::String,
-                                  value: None,}]
-    });
-    assert_eq!(throws(b"throws( 1: string foo )").unwrap().1, Throws {
-        fields: vec![StructField {seq: Some(1),
-                                  optional: false,
-                                  ident: "foo".to_string(),
-                                  ty: Ty::String,
-                                  value: None,}]
-    });
-    assert_eq!(throws(b"throws(1: string foo, 2: optional i32 bar)").unwrap().1, Throws {
-        fields: vec![StructField {seq: Some(1),
-                                  optional: false,
-                                  ident: "foo".to_string(),
-                                  ty: Ty::String,
-                                  value: None,},
-                     StructField {seq: Some(2),
-                                  optional: true,
-                                  ident: "bar".to_string(),
-                                  ty: Ty::I32,
-                                  value: None,}]
-    });
+    assert_eq!(throws(b"throws(1: string foo)").unwrap().1,
+               vec![StructField {seq: Some(1),
+                                 optional: false,
+                                 ident: "foo".to_string(),
+                                 ty: Ty::String,
+                                 value: None,
+               }]);
+    assert_eq!(throws(b"throws( 1: string foo )").unwrap().1,
+               vec![StructField {seq: Some(1),
+                                 optional: false,
+                                 ident: "foo".to_string(),
+                                 ty: Ty::String,
+                                 value: None,
+               }]
+    );
+    assert_eq!(throws(b"throws(1: string foo, 2: optional i32 bar)").unwrap().1,
+               vec![StructField {seq: Some(1),
+                                 optional: false,
+                                 ident: "foo".to_string(),
+                                 ty: Ty::String,
+                                 value: None,
+               },
+                    StructField {seq: Some(2),
+                                 optional: true,
+                                 ident: "bar".to_string(),
+                                 ty: Ty::I32,
+                                 value: None,
+                    }]
+    );
 }
 
 #[test]
