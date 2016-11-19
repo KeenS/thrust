@@ -8,7 +8,7 @@ UNDER DEVELOPMENT, NOT READY TO USE
 
 * [x] `bool`
 * [x] `byte`
-* [ ] `i8`
+* [x] `i8`
 * [x] `i16`
 * [x] `i32`
 * [x] `i64`
@@ -30,6 +30,7 @@ UNDER DEVELOPMENT, NOT READY TO USE
 
 ### Other Directives
 
+* [ ] comment
 * [x] `namespace`
 * [ ] `include`
 * [x] `const` (see [Constants](#Constants) for concrete literal)
