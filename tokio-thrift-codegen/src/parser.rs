@@ -285,7 +285,8 @@ named!(document <Document>, chain!(
     blank? ~
         headers: many0!(chain!(h: header ~ blank?, || h)) ~
         defs:  many0!(chain!(d: definition ~ blank?, || d)) ~
-        eof,
+        eof
+        ,
     || Document {
         headers: headers,
         definitions: defs,
@@ -612,34 +613,32 @@ named!(comment <()>, alt!(
 
 #[test]
 fn test_document() {
-    println!("{:?}", document(b"include \"foo.thrift\""));
-
-    assert_eq!(document(b"include \"foo.thrift\"").unwrap().1,
+    assert_eq!(document(b"include \"foo.thrift\" ").unwrap().1,
                Document{
                    headers: vec![Header::Include(Include {path: "foo.thrift".to_string()})],
                    definitions: vec![]}
     );
 
-    // assert_eq!(document(b"const i32 foo = 1").unwrap().1,
-    //            Document{
-    //                headers: vec![],
-    //                definitions: vec![Definition::Const(Const {ident: "foo".to_string(), ty: Ty::I32, value: ConstValue::Int(1)})]}
-    // );
+    assert_eq!(document(b"const i32 foo = 1;").unwrap().1,
+               Document{
+                   headers: vec![],
+                   definitions: vec![Definition::Const(Const {ident: "foo".to_string(), ty: Ty::I32, value: ConstValue::Int(1)})]}
+    );
 
 
-//     assert_eq!(document(b"
-// include \"foo.thrift\"
+    assert_eq!(document(b"
+include \"foo.thrift\"
 
-// const i32 foo = 1
+const i32 foo = 1
 
-// struct Foo {}
+struct Foo {}
 
-// ").unwrap().1,
-//                Document{
-//                    headers: vec![Header::Include(Include {path: "foo.thrift".to_string()})],
-//                    definitions: vec![Definition::Const(Const {ident: "foo".to_string(), ty: Ty::I32, value: ConstValue::Int(1)}),
-//                                      Definition::Struct(Struct {ident: "Foo".to_string(), fields: vec![],})]}
-//     );
+").unwrap().1,
+               Document{
+                   headers: vec![Header::Include(Include {path: "foo.thrift".to_string()})],
+                   definitions: vec![Definition::Const(Const {ident: "foo".to_string(), ty: Ty::I32, value: ConstValue::Int(1)}),
+                                     Definition::Struct(Struct {ident: "Foo".to_string(), fields: vec![],})]}
+    );
 
 
 }
