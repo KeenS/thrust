@@ -9,6 +9,18 @@ pub struct {{exception.ident}} {
     {{~/each}}
 }
 
+impl  Display for {{exception.ident}} {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl Error for {{exception.ident}} {
+    fn fn description(&self) -> &str {
+        "Thrift defined exception"
+    }
+}
+
 impl Serialize for {{exception.ident}} {
     fn serialize<S>(&self, s: &mut S) -> Result<(), Error>
         where S: Serializer + ThriftSerializer
