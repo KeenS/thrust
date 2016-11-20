@@ -158,13 +158,13 @@ pub fn compile(mut doc: Document, wr: &mut Write) -> Result<(), Error> {
     for def in doc.definitions.iter() {
         use parser::Definition::*;
         match def {
-            &Const(ref c)     => gen_const  (c, &mut data, wr, &mut handlebars)?,
-            &Typedef(ref t)   => gen_typedef(t, &mut data, wr, &mut handlebars)?,
-            &Enum(ref e)      => gen_enum   (e, &mut data, wr, &mut handlebars)?,
-            &Struct(ref s)    => gen_struct (s, &mut data, wr, &mut handlebars)?,
-            &Union(_)     => return Err(Error::NotSupported("union is not supported yet".to_string())),
-            &Exception(_) => return Err(Error::NotSupported("exception is not supported yet".to_string())),
-            &Service(ref s)   => gen_service(s, &mut data, wr, &mut handlebars)?,
+            &Const(ref c)     => gen_const    (c, &mut data, wr, &mut handlebars)?,
+            &Typedef(ref t)   => gen_typedef  (t, &mut data, wr, &mut handlebars)?,
+            &Enum(ref e)      => gen_enum     (e, &mut data, wr, &mut handlebars)?,
+            &Struct(ref s)    => gen_struct   (s, &mut data, wr, &mut handlebars)?,
+            &Union(_)         => return Err(Error::NotSupported("union is not supported yet".to_string())),
+            &Exception(ref e) => gen_exception(e, &mut data, wr, &mut handlebars)?,
+            &Service(ref s)   => gen_service  (s, &mut data, wr, &mut handlebars)?,
         }
     }
     Ok(())

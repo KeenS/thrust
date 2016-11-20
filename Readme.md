@@ -31,17 +31,19 @@ UNDER DEVELOPMENT, NOT READY TO USE
 ### Other Directives
 
 * [x] comment
-* [x] `namespace`
-* [ ] `include`
-* [x] `const` (see [Constants](#Constants) for concrete supported literal)
-* [x] `typedef`
-* [x] `struct`
+* requiredness
   + [x] `required`
   + [x] `optional`
+  + [ ] implicit (always infered to `required`)
+* [x] `namespace`
+* [ ] `include`
+* [x] `const` (see [Constants](#constants) for concrete supported literal)
+* [x] `typedef`
+* [x] `struct`
 * [x] `enum`
   + [x] `VARIANT = n`
 * [ ] `union`
-* [ ] `exception`
+* [x] `exception`
 * [x] `service`
   + [ ] `extends`
   + [x] `function`
