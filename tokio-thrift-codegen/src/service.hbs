@@ -1,5 +1,5 @@
 
-pub trait {{service.ident}}Service: Send {
+pub trait {{service.ident}}Service: Send {{#if service.extends ~}}+ {{service.extends}} {{/if}}{
     {{~#each service.methods as |method|}}
     {{> method method = method}};
     {{~/each}}

@@ -45,7 +45,7 @@ UNDER DEVELOPMENT, NOT READY TO USE
 * [ ] `union`
 * [x] `exception`
 * [x] `service`
-  + [ ] `extends`
+  + [x] `extends`
   + [x] `function`
     - [ ] `oneway`
     - [x] `void`
