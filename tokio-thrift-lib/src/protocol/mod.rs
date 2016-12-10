@@ -1,8 +1,7 @@
 pub mod binary_protocol;
-pub use self::{binary_protocol as binary};
+pub use self::binary_protocol::BinaryProtocol;
 
-use std::io;
-use std::convert;
+use std::{io, convert, error, fmt};
 use byteorder;
 use std::string::FromUtf8Error;
 
@@ -14,6 +13,35 @@ pub enum Error {
     BadVersion,
     ProtocolVersionMissing
 }
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.fmt(f)
+    }
+}
+
+impl error::Error for Error {
+    fn description(&self) -> &str {
+        match self {
+            &Error::Byteorder(ref e) => "internal error of byteorder",
+            &Error::Io(ref e) => "internal error of io",
+            &Error::Utf8Error(ref e) => "internal error of utf8 conversion",
+            &Error::BadVersion => "bad version",
+            &Error::ProtocolVersionMissing => "protocol version missing",
+        }
+    }
+
+    fn cause(&self) -> Option<&error::Error> {
+        match self {
+            &Error::Byteorder(ref e) => Some(e),
+            &Error::Io(ref e) => Some(e),
+            &Error::Utf8Error(ref e) => Some(e),
+            &Error::BadVersion => None,
+            &Error::ProtocolVersionMissing => None,
+        }
+    }
+}
+
 
 impl convert::From<byteorder::Error> for Error {
     fn from(err: byteorder::Error) -> Error {
