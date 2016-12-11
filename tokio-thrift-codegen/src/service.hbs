@@ -5,52 +5,8 @@ pub trait {{service.ident}}Service: Send {{#if service.extends ~}}+ {{service.ex
     {{~/each}}
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum {{service.ident}}ServiceMethods {
-    {{~#each service.methods as |method|}}
-    M{{method.ident}},
-    {{~/each}}
-}
 
-impl FromStr for {{service.ident}}ServiceMethods {
-    type Err = io::Error;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        use self::{{service.ident}}ServiceMethods::*;
-        match s {
-            {{~#each service.methods as |method|}}
-            "{{method.ident}}" => Ok(M{{method.ident}}),
-            {{~/each}}
-            _ => Err(io::Error::new(io::ErrorKind::InvalidData, "failed to parse thrift method data"))
-        }
-    }
-}
-
-
-impl ParseThrift for {{service.ident}}ServiceMethods {
-    type Args = {{service.ident}}ServiceMethodArgs;
-    type Ret = {{service.ident}}ServiceMethodReturn;
-    fn parse_args<D: Deserializer + ThriftDeserializer>(&self, proto: &mut D) -> Result<Self::Args, Error> {
-        use self::{{service.ident}}ServiceMethodArgs::*;
-        use self::{{service.ident}}ServiceMethods::*;
-        match self {
-            {{~#each service.methods as |method|}}
-            &M{{method.ident}} => {{../service.ident}}{{method.ident}}Args::deserialize(proto).map(A{{method.ident}}),
-            {{~/each}}
-        }
-    }
-
-    fn parse_ret<D: Deserializer + ThriftDeserializer>(&self, proto: &mut D) -> Result<Self::Ret, Error> {
-        use self::{{service.ident}}ServiceMethodReturn::*;
-        use self::{{service.ident}}ServiceMethods::*;
-        match self {
-            {{~#each service.methods as |method|}}
-            &M{{method.ident}} => {{to_rust method.ty}}::deserialize(proto).map(R{{method.ident}}),
-            {{~/each}}
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone)]
 pub enum {{service.ident}}ServiceMethodArgs {
     {{~#each service.methods as |method|}}
     A{{method.ident}}({{../service.ident}}{{method.ident}}Args),
@@ -76,10 +32,29 @@ impl Serialize for {{service.ident}}ServiceMethodArgs {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+impl Deserialize for {{service.ident}}ServiceMethodArgs {
+    fn deserialize<D>(de: &mut D) -> Result<Self, Error>
+        where D: Deserializer + ThriftDeserializer,
+    {
+        let msg = try!(de.read_message_begin());
+        //assert!(msg.type) == $msg_type
+        let ret = match msg.name.as_ref() {
+            {{~#each service.methods as |method|}}
+            "{{method.ident}}" => {{../service.ident}}ServiceMethodArgs::A{{method.ident}}({{../service.ident}}{{method.ident}}Args::deserialize(de)?),
+            {{~/each}}
+            _ => return Err(Error::from(io::Error::new(io::ErrorKind::InvalidData, "failed to parse thrift data"))),
+        };
+        let _ = try!(de.read_message_end());
+        Ok(ret)
+    }
+}
+
+
+#[derive(Debug, Clone)]
 pub enum {{service.ident}}ServiceMethodReturn {
     {{~#each service.methods as |method|}}
-    R{{method.ident}}({{to_rust method.ty}}),
+    // FIXME: generate exception too
+    R{{method.ident}}(Result<{{to_rust method.ty}}, ()>),
     {{~/each}}
 
 }
@@ -93,9 +68,14 @@ impl Serialize for {{service.ident}}ServiceMethodReturn {
         match self {
             {{~#each service.methods as |method|}}
             &R{{method.ident}}(ref b) => {
-                try!(s.write_message_begin("{{method.ident}}", ThriftMessageType::Reply));
-                try!(b.serialize(s));
-                try!(s.write_message_end());
+                match b {
+                    &Ok(ref b) => {
+                        try!(s.write_message_begin("{{method.ident}}", ThriftMessageType::Reply));
+                        try!(b.serialize(s));
+                        try!(s.write_message_end());
+                    },
+                    &Err(_) => panic!("exception is not supported yet"),
+                }
             },
             {{~/each}}
         };
@@ -103,10 +83,29 @@ impl Serialize for {{service.ident}}ServiceMethodReturn {
     }
 }
 
+impl Deserialize for {{service.ident}}ServiceMethodReturn {
+    fn deserialize<D>(de: &mut D) -> Result<Self, Error>
+        where D: Deserializer + ThriftDeserializer,
+    {
+        let msg = try!(de.read_message_begin());
+        // if msg.type == return
+        let ret = match msg.name.as_ref() {
+            {{~#each service.methods as |method|}}
+            "{{method.ident}}" => {{../service.ident}}ServiceMethodReturn::R{{method.ident}}(Ok({{to_rust method.ty}}::deserialize(de)?)),
+            {{~/each}}
+            _ => return Err(Error::from(io::Error::new(io::ErrorKind::InvalidData, "failed to parse thrift data"))),
+        };
+        // else msg.type == exception
+        // FIXME:
+
+        let _ = try!(de.read_message_end());
+        Ok(ret)
+    }
+}
 
 
 {{#each service.methods as |method| ~}}
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone)]
 pub struct {{../service.ident}}{{method.ident}}Args {
     {{~#each method.args as |arg|}}
     {{#if field.optional ~}}
@@ -143,7 +142,6 @@ impl Serialize for {{../service.ident}}{{method.ident}}Args {
     }
 }
 {{/each}}
-
 
 {{#each service.methods as |method|}}
 impl Deserialize for {{../service.ident}}{{method.ident}}Args {

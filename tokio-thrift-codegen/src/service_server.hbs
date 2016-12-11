@@ -1,3 +1,41 @@
+pub struct {{service.ident}}ServerCodec;
+
+impl Codec for {{service.ident}}ServerCodec {
+    type In = {{service.ident}}ServiceMethodArgs;
+    type Out = {{service.ident}}ServiceMethodReturn;
+
+    fn decode(&mut self, buf: &mut EasyBuf) -> Result<Option<Self::In>, io::Error> {
+        let cur = io::Cursor::new(buf);
+        let mut protocol = BinaryProtocol::from(cur);
+        let ret = Self::In::deserialize(&mut protocol)?;
+        let cur = protocol.into_inner();
+        let size = cur.position();
+        let buf = cur.into_inner();
+        buf.drain_to(size as usize);
+        Ok(Some(ret))
+    }
+
+    fn encode(&mut self, msg: Self::Out, buf: &mut Vec<u8>) -> io::Result<()> {
+        let mut protocol = BinaryProtocol::from(buf);
+        msg.serialize(&mut protocol).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+    }
+}
+
+
+pub struct {{service.ident}}ServerProto;
+
+impl<T: Io + 'static> ServerProto<T> for {{service.ident}}ServerProto {
+    type Request = {{service.ident}}ServiceMethodArgs;
+    type Response = {{service.ident}}ServiceMethodReturn;
+    type Error = io::Error;
+    type Transport = Framed<T, {{service.ident}}ServerCodec>;
+    type BindTransport = Result<Self::Transport, io::Error>;
+
+    fn bind_transport(&self, io: T) -> Self::BindTransport {
+        Ok(io.framed({{service.ident}}ServerCodec))
+    }
+}
+
 #[derive(Clone)]
 pub struct {{service.ident}}Server<T>
 {
@@ -12,17 +50,6 @@ impl <T: {{service.ident}}Service>{{service.ident}}Server<T>
             inner: inner
         }
     }
-
-    pub fn serve(self, handle: &Handle,  addr: SocketAddr)
-                    -> io::Result<server::ServerHandle>
-        where T: {{service.ident}}Service+Clone+'static
-    {
-        server::listen(handle, addr, move |stream| {
-            Ok(pipeline::EasyServer::new(self.clone(),
-                                         new_thrift_server_transport::<_, {{service.ident}}ServiceMethods, {{service.ident}}ServiceMethodReturn>(stream)))
-        })
-    }
-
 }
 
 impl <T>Service for {{service.ident}}Server<T>
@@ -31,7 +58,7 @@ impl <T>Service for {{service.ident}}Server<T>
     type Request = {{service.ident}}ServiceMethodArgs;
     type Response = {{service.ident}}ServiceMethodReturn;
     type Error = io::Error;
-    type Future = Box<Future<Item = {{service.ident}}ServiceMethodReturn, Error = io::Error>>;
+    type Future = BoxFuture<{{service.ident}}ServiceMethodReturn, io::Error>;
 
 
     fn call(&self, req: Self::Request) -> Self::Future {
@@ -39,11 +66,11 @@ impl <T>Service for {{service.ident}}Server<T>
         use {{../namespace}}::{{service.ident}}ServiceMethodReturn::*;
         match req {
             {{~#each service.methods as |method|}}
-            A{{method.ident}}(_args)  => Box::new(self.inner.{{method.ident}}(
+            A{{method.ident}}(_args)  => self.inner.{{method.ident}}(
                 {{~#each method.args as |arg|}}
                 _args.{{arg.ident}},
                 {{~/each}}
-            ).map(R{{method.ident}})),
+            ).then(|r| finished(R{{method.ident}}(r))).boxed(),
             {{~/each}}
         }
     }

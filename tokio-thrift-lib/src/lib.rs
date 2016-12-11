@@ -10,6 +10,5 @@ extern crate log;
 pub mod protocol;
 mod result;
 pub mod transport;
-mod easy;
 
 pub use result::{ThrustResult, ThrustError};

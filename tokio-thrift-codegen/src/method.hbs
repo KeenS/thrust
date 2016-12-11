@@ -1,1 +1,2 @@
-fn {{method.ident}}(&self{{#each method.args as |arg| ~}} , {{arg.ident}}: {{to_rust arg.ty}}{{/each ~}}) -> Box<Future<Item = {{to_rust method.ty}}, Error = io::Error>>
+// FIXME: generate result type
+fn {{method.ident}}(&self{{#each method.args as |arg| ~}} , {{arg.ident}}: {{to_rust arg.ty}}{{/each ~}}) -> BoxFuture<{{to_rust method.ty}}, ()>

@@ -1,29 +1,56 @@
-pub struct {{service.ident}}Client {
-    inner: easy::EasyClient<{{service.ident}}ServiceMethodArgs, {{service.ident}}ServiceMethodReturn>,
-}
+pub struct {{service.ident}}ClientCodec;
 
-impl {{service.ident}}Client {
-    pub fn new(handle: &Handle, stream: TcpStream) -> Self {
-        let transport = new_thrift_client_transport::<_, {{service.ident}}ServiceMethods, {{service.ident}}ServiceMethodArgs>(stream);
-        let easy_client = easy::pipeline::connect(transport, handle);
+impl Codec for {{service.ident}}ClientCodec {
+    type In = {{service.ident}}ServiceMethodReturn;
+    type Out = {{service.ident}}ServiceMethodArgs;
 
-        {{service.ident}}Client { inner: easy_client }
+    fn decode(&mut self, buf: &mut EasyBuf) -> Result<Option<Self::In>, io::Error> {
+        let cur = io::Cursor::new(buf);
+        let mut protocol = BinaryProtocol::from(cur);
+        let ret = Self::In::deserialize(&mut protocol)?;
+        let cur = protocol.into_inner();
+        let size = cur.position();
+        let buf = cur.into_inner();
+        buf.drain_to(size as usize);
+        Ok(Some(ret))
+    }
+
+    fn encode(&mut self, msg: Self::Out, buf: &mut Vec<u8>) -> io::Result<()> {
+        let mut protocol = BinaryProtocol::from(buf);
+        msg.serialize(&mut protocol).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+
     }
 }
 
-impl Service for {{service.ident}}Client {
+
+pub struct {{service.ident}}ClientProto;
+
+impl<T: Io + 'static> ClientProto<T> for {{service.ident}}ClientProto {
     type Request = {{service.ident}}ServiceMethodArgs;
     type Response = {{service.ident}}ServiceMethodReturn;
     type Error = io::Error;
-    type Future = Box<Future<Item = Self::Response, Error = Self::Error>>;
+    type Transport = Framed<T, {{service.ident}}ClientCodec>;
+    type BindTransport = Result<Self::Transport, io::Error>;
 
-    fn call(&self, arg: Self::Request) -> Self::Future {
-        self.inner.call(arg)
-            .boxed()
+    fn bind_transport(&self, io: T) -> Self::BindTransport {
+        Ok(io.framed({{service.ident}}ClientCodec))
     }
 }
 
-impl {{service.ident}}Service for {{service.ident}}Client {
+
+pub struct {{service.ident}}Client<T: 'static+Io> {
+    client: ClientService<T, {{service.ident}}ClientProto>,
+}
+
+impl <T: 'static+Io>{{service.ident}}Client<T> {
+    pub fn new(client: ClientService<T, {{service.ident}}ClientProto>) -> Self {
+        {{service.ident}}Client {
+            client: client,
+        }
+    }
+}
+
+impl <T: 'static+Io>{{service.ident}}Service for {{service.ident}}Client<T> {
     {{~#each service.methods as |method|}}
     {{> method method = method}} {
         use {{../namespace}}::{{../service.ident}}ServiceMethodArgs::*;
@@ -33,14 +60,15 @@ impl {{service.ident}}Service for {{service.ident}}Client {
             {{arg.ident}}: {{arg.ident}},
             {{~/each}}
         };
-        let ret = self.call(A{{method.ident}}(args)).map(|r| {
-            if let R{{method.ident}}(ret) = r {
-                ret
-            } else {
-                unreachable!("generated code error. map be a bug.");
-            }
-        });
-        Box::new(ret)
+        self.client
+            .call(A{{method.ident}}(args))
+            .then(|ret| match ret {
+                Ok(R{{method.ident}}(Ok(s))) => Ok(s),
+                Ok(R{{method.ident}}(Err(_))) |
+                Err(_) => panic!("exception is not supported yet"),
+                Ok(_) => panic!("tokio-thrift internal error. may be a bug"),
+            }).boxed()
     }
-    {{~/each}}
+{{~/each}}
 }
+

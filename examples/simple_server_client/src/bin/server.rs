@@ -14,12 +14,12 @@ struct HelloServerImpl;
 
 // implement HelloService
 impl HelloService for HelloServerImpl {
-    fn hello_name(&self, name: String) -> BoxFuture<String, String> {
+    fn hello_name(&self, name: String) -> BoxFuture<String, ()> {
         println!("GOT: {:?}", name);
         if name == "error".as_ref() {
-            failed::<String, _>("error passed".to_string()).boxed()
+            failed::<String, _>(()).boxed()
         } else {
-            finished::<_, String>(format!("Hello, {}", name)).boxed()
+            finished::<_, ()>(format!("Hello, {}", name)).boxed()
         }
 
     }
