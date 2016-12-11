@@ -24,11 +24,14 @@ pub fn main() {
 
     // the client implements `HelloService` so you can call the methods directly
     let hello_ret = client.hello();
-    let hello_name_ret = client.hello_name("keen".to_string());
+    let hello_name_ret1 = client.hello_name("keen".to_string());
+    let hello_name_ret2 = client.hello_name("error".to_string());
 
     let hello_ret = core.run(hello_ret).expect("rpc failed");
-    let hello_name_ret = core.run(hello_name_ret).expect("rpc failed");
+    let hello_name_ret1 = core.run(hello_name_ret1).expect("rpc failed");
+    let hello_name_ret2 = core.run(hello_name_ret2).expect("rpc failed");
 
     println!("RESPONSE: {:?}", hello_ret);
-    println!("RESPONSE: {:?}", hello_name_ret);
+    println!("RESPONSE: {:?}", hello_name_ret1);
+    println!("RESPONSE: {:?}", hello_name_ret2);
 }
