@@ -1,8 +1,7 @@
 use std::io::{self, Cursor};
 use tokio_core::io::Io;
 use easy::{Parse, Serialize, EasyBuf, EasyFramed};
-use protocol::{Deserialize as De, Serialize as Se, Deserializer, ThriftDeserializer, Error};
-use protocol::binary::BinaryProtocol;
+use protocol::{Deserialize as De, Serialize as Se, Deserializer, ThriftDeserializer, Error, BinaryProtocol};
 use futures::{Poll, Async};
 use std::marker::PhantomData;
 

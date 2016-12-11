@@ -61,6 +61,16 @@ impl convert::From<io::Error> for Error {
     }
 }
 
+impl convert::From<Error> for io::Error {
+    fn from(err: Error) -> io::Error {
+        match err {
+            Error::Io(e) => e,
+            e => io::Error::new(io::ErrorKind::InvalidData, e)
+        }
+    }
+}
+
+
 #[derive(PartialEq, Eq, Debug)]
 pub enum ThriftType {
     Stop = 0,

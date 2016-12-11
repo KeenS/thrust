@@ -10,7 +10,7 @@ license = "MIT"
 authors = ["Daniel Fagnan <dnfagnan@gmail.com>", "Sunrin SHIMURA (keen) <3han5chou7@gmail.com>"]
 
 [workspace]
-members = ["tokio-thrift-lib", "tokio-thrift-codegen", "tokio-thrift-macros"]
+members = ["tokio-thrift-lib", "tokio-thrift-codegen", "tokio-thrift-macros", "examples/simple_server_client"]
 
 [[bin]]
 name = "tokio-thrift"
