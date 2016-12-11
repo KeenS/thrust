@@ -22,9 +22,9 @@ impl Serialize for {{service.ident}}ServiceMethodArgs {
         match self {
             {{~#each service.methods as |method|}}
             &A{{method.ident}}(ref b) => {
-                try!(s.write_message_begin("{{method.ident}}", ThriftMessageType::Call));
-                try!(b.serialize(s));
-                try!(s.write_message_end());
+                s.write_message_begin("{{method.ident}}", ThriftMessageType::Call)?;
+                b.serialize(s)?;
+                s.write_message_end()?;
             },
             {{~/each}}
         };
@@ -36,7 +36,7 @@ impl Deserialize for {{service.ident}}ServiceMethodArgs {
     fn deserialize<D>(de: &mut D) -> Result<Self, Error>
         where D: Deserializer + ThriftDeserializer,
     {
-        let msg = try!(de.read_message_begin());
+        let msg = de.read_message_begin()?;
         //assert!(msg.type) == $msg_type
         let ret = match msg.name.as_ref() {
             {{~#each service.methods as |method|}}
@@ -44,7 +44,7 @@ impl Deserialize for {{service.ident}}ServiceMethodArgs {
             {{~/each}}
             _ => return Err(Error::from(io::Error::new(io::ErrorKind::InvalidData, "failed to parse thrift data"))),
         };
-        let _ = try!(de.read_message_end());
+        let _ = de.read_message_end()?;
         Ok(ret)
     }
 }
@@ -70,9 +70,9 @@ impl Serialize for {{service.ident}}ServiceMethodReturn {
             &R{{method.ident}}(ref b) => {
                 match b {
                     &Ok(ref b) => {
-                        try!(s.write_message_begin("{{method.ident}}", ThriftMessageType::Reply));
-                        try!(b.serialize(s));
-                        try!(s.write_message_end());
+                        s.write_message_begin("{{method.ident}}", ThriftMessageType::Reply)?;
+                        b.serialize(s)?;
+                        s.write_message_end()?;
                     },
                     &Err(_) => panic!("exception is not supported yet"),
                 }
@@ -87,7 +87,7 @@ impl Deserialize for {{service.ident}}ServiceMethodReturn {
     fn deserialize<D>(de: &mut D) -> Result<Self, Error>
         where D: Deserializer + ThriftDeserializer,
     {
-        let msg = try!(de.read_message_begin());
+        let msg = de.read_message_begin()?;
         // if msg.type == return
         let ret = match msg.name.as_ref() {
             {{~#each service.methods as |method|}}
@@ -98,7 +98,7 @@ impl Deserialize for {{service.ident}}ServiceMethodReturn {
         // else msg.type == exception
         // FIXME:
 
-        let _ = try!(de.read_message_end());
+        let _ = de.read_message_end()?;
         Ok(ret)
     }
 }
@@ -122,22 +122,22 @@ impl Serialize for {{../service.ident}}{{method.ident}}Args {
     fn serialize<S>(&self, s: &mut S) -> Result<(), Error>
         where S: Serializer + ThriftSerializer
     {
-        try!(s.write_struct_begin("{{../service.ident}}_{{method.ident}}_Args"));
+        s.write_struct_begin("{{../service.ident}}_{{method.ident}}_Args")?;
         {{#each method.args as |arg|~}}
         {{#if field.optional~}}
         if self.{{arg.ident}}.is_some() {
-            try!(s.write_field_begin("{{arg.ident}}", {{to_protocol arg.ty}}, {{arg.seq}}));
-            try!(self.{{arg.ident}}.serialize(s));
-            try!(s.write_field_end());
+            s.write_field_begin("{{arg.ident}}", {{to_protocol arg.ty}}, {{arg.seq}})?;
+            self.{{arg.ident}}.serialize(s)?;
+            s.write_field_end()?;
         }
         {{~^~}}
-        try!(s.write_field_begin("{{arg.ident}}", {{to_protocol arg.ty}}, {{arg.seq}}));
-        try!(self.{{arg.ident}}.serialize(s));
-        try!(s.write_field_end());
+        s.write_field_begin("{{arg.ident}}", {{to_protocol arg.ty}}, {{arg.seq}})?;
+        self.{{arg.ident}}.serialize(s)?;
+        s.write_field_end()?;
         {{/if}}
         {{~/each~}}
-        try!(s.write_field_stop());
-        try!(s.write_struct_end());
+        s.write_field_stop()?;
+        s.write_struct_end()?;
         Ok(())
     }
 }
@@ -148,12 +148,12 @@ impl Deserialize for {{../service.ident}}{{method.ident}}Args {
     fn deserialize<D>(de: &mut D) -> Result<Self, Error>
         where D: Deserializer + ThriftDeserializer,
     {
-        try!(de.read_struct_begin());
+        de.read_struct_begin()?;
         {{#each args as |arg|~}}
         let mut {{arg.ident}} = None;
         {{~/each}}
         loop {
-            let scheme_field = try!(de.read_field_begin());
+            let scheme_field = de.read_field_begin()?;
             if scheme_field.ty == ThriftType::Stop {
                 break;
             };
@@ -161,7 +161,7 @@ impl Deserialize for {{../service.ident}}{{method.ident}}Args {
                 {{#each args as |arg|~}}
                 {{arg.seq}} => {
                     if scheme_field.ty == {{to_protocol arg.ty}} {
-                        {{arg.ident}} = Some(try!({{expr arg.ty}}));
+                        {{arg.ident}} = Some({{expr arg.ty}}?);
                     } else {
                         // skip
                     }
@@ -169,9 +169,9 @@ impl Deserialize for {{../service.ident}}{{method.ident}}Args {
                 {{~/each}}
                 _ => (),// skip
             }
-            try!(de.read_field_end());
+            de.read_field_end()?;
         };
-        try!(de.read_struct_end());
+        de.read_struct_end()?;
         let args = {{../service.ident}}{{method.ident}}Args {
             {{#each args as |arg|~}}
             {{#if field.optional ~}}

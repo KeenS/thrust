@@ -13,22 +13,22 @@ impl Serialize for {{struct.ident}} {
     fn serialize<S>(&self, s: &mut S) -> Result<(), Error>
         where S: Serializer + ThriftSerializer
     {
-        try!(s.write_struct_begin("{{struct.ident}}"));
+        s.write_struct_begin("{{struct.ident}}")?;
         {{#each struct.fields as |field|~}}
         {{#if field.optional}}
         if self.{{field.ident}}.is_some() {
-            try!(s.write_field_begin("{{field.ident}}", {{to_protocol field.ty}}, {{field.seq}}));
-            try!(self.{{field.ident}}.unwrap().serialize(s));
-            try!(s.write_field_end());
+            s.write_field_begin("{{field.ident}}", {{to_protocol field.ty}}, {{field.seq}})?;
+            self.{{field.ident}}.unwrap().serialize(s)?;
+            s.write_field_end()?;
         }
         {{~^~}}
-        try!(s.write_field_begin("{{field.ident}}", {{to_protocol field.ty}}, {{field.seq}}));
-        try!(self.{{field.ident}}.serialize(s));
-        try!(s.write_field_end());
+        s.write_field_begin("{{field.ident}}", {{to_protocol field.ty}}, {{field.seq}})?;
+        self.{{field.ident}}.serialize(s)?;
+        s.write_field_end()?;
         {{~/if~}}
         {{~/each}}
-        try!(s.write_field_stop());
-        try!(s.write_struct_end());
+        s.write_field_stop()?;
+        s.write_struct_end()?;
         Ok(())
     }
 }
@@ -38,12 +38,12 @@ impl Deserialize for {{struct.ident}} {
     fn deserialize<D>(de: &mut D) -> Result<Self, Error>
         where D: Deserializer + ThriftDeserializer,
     {
-        try!(de.read_struct_begin());
+        de.read_struct_begin()?;
         {{~#each struct.fields as |field|}}
         let mut {{field.ident}} = None;
         {{~/each}}
         loop {
-            let scheme_field = try!(de.read_field_begin());
+            let scheme_field = de.read_field_begin()?;
             if scheme_field.ty == ThriftType::Stop {
                 break;
             };
@@ -51,7 +51,7 @@ impl Deserialize for {{struct.ident}} {
                 {{~#each struct.fields as |field|}}
                 {{field.seq}} => {
                     if scheme_field.ty == {{to_protocol field.ty}} {
-                        {{field.ident}} = Some(try!({{expr field.ty}}));
+                        {{field.ident}} = Some({{expr field.ty}}?);
                     } else {
                         // skip
                     }
@@ -59,9 +59,9 @@ impl Deserialize for {{struct.ident}} {
                 {{~/each}}
                 _ => (),// skip
             }
-            try!(de.read_field_end());
+            de.read_field_end()?;
         };
-        try!(de.read_struct_end());
+        de.read_struct_end()?;
         let args = {{struct.ident}} {
             {{~#each struct.fields as |field|}}
             {{#if field.optional ~}}

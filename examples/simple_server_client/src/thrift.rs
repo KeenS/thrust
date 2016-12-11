@@ -39,14 +39,14 @@ impl Serialize for HelloServiceMethodArgs {
         use self::HelloServiceMethodArgs::*;
         match self {
             &Ahello_name(ref b) => {
-                try!(s.write_message_begin("hello_name", ThriftMessageType::Call));
-                try!(b.serialize(s));
-                try!(s.write_message_end());
+                s.write_message_begin("hello_name", ThriftMessageType::Call)?;
+                b.serialize(s)?;
+                s.write_message_end()?;
             },
             &Ahello(ref b) => {
-                try!(s.write_message_begin("hello", ThriftMessageType::Call));
-                try!(b.serialize(s));
-                try!(s.write_message_end());
+                s.write_message_begin("hello", ThriftMessageType::Call)?;
+                b.serialize(s)?;
+                s.write_message_end()?;
             },
         };
         Ok(())
@@ -57,14 +57,14 @@ impl Deserialize for HelloServiceMethodArgs {
     fn deserialize<D>(de: &mut D) -> Result<Self, Error>
         where D: Deserializer + ThriftDeserializer,
     {
-        let msg = try!(de.read_message_begin());
+        let msg = de.read_message_begin()?;
         //assert!(msg.type) == $msg_type
         let ret = match msg.name.as_ref() {
             "hello_name" => HelloServiceMethodArgs::Ahello_name(Hellohello_nameArgs::deserialize(de)?),
             "hello" => HelloServiceMethodArgs::Ahello(HellohelloArgs::deserialize(de)?),
             _ => return Err(Error::from(io::Error::new(io::ErrorKind::InvalidData, "failed to parse thrift data"))),
         };
-        let _ = try!(de.read_message_end());
+        let _ = de.read_message_end()?;
         Ok(ret)
     }
 }
@@ -89,9 +89,9 @@ impl Serialize for HelloServiceMethodReturn {
             &Rhello_name(ref b) => {
                 match b {
                     &Ok(ref b) => {
-                        try!(s.write_message_begin("hello_name", ThriftMessageType::Reply));
-                        try!(b.serialize(s));
-                        try!(s.write_message_end());
+                        s.write_message_begin("hello_name", ThriftMessageType::Reply)?;
+                        b.serialize(s)?;
+                        s.write_message_end()?;
                     },
                     &Err(_) => panic!("exception is not supported yet"),
                 }
@@ -99,9 +99,9 @@ impl Serialize for HelloServiceMethodReturn {
             &Rhello(ref b) => {
                 match b {
                     &Ok(ref b) => {
-                        try!(s.write_message_begin("hello", ThriftMessageType::Reply));
-                        try!(b.serialize(s));
-                        try!(s.write_message_end());
+                        s.write_message_begin("hello", ThriftMessageType::Reply)?;
+                        b.serialize(s)?;
+                        s.write_message_end()?;
                     },
                     &Err(_) => panic!("exception is not supported yet"),
                 }
@@ -115,7 +115,7 @@ impl Deserialize for HelloServiceMethodReturn {
     fn deserialize<D>(de: &mut D) -> Result<Self, Error>
         where D: Deserializer + ThriftDeserializer,
     {
-        let msg = try!(de.read_message_begin());
+        let msg = de.read_message_begin()?;
         // if msg.type == return
         let ret = match msg.name.as_ref() {
             "hello_name" => HelloServiceMethodReturn::Rhello_name(Ok(String::deserialize(de)?)),
@@ -125,7 +125,7 @@ impl Deserialize for HelloServiceMethodReturn {
         // else msg.type == exception
         // FIXME:
 
-        let _ = try!(de.read_message_end());
+        let _ = de.read_message_end()?;
         Ok(ret)
     }
 }
@@ -142,12 +142,12 @@ impl Serialize for Hellohello_nameArgs {
     fn serialize<S>(&self, s: &mut S) -> Result<(), Error>
         where S: Serializer + ThriftSerializer
     {
-        try!(s.write_struct_begin("Hello_hello_name_Args"));
-        try!(s.write_field_begin("name", ThriftType::String, 1));
-        try!(self.name.serialize(s));
-        try!(s.write_field_end());
-        try!(s.write_field_stop());
-        try!(s.write_struct_end());
+        s.write_struct_begin("Hello_hello_name_Args")?;
+        s.write_field_begin("name", ThriftType::String, 1)?;
+        self.name.serialize(s)?;
+        s.write_field_end()?;
+        s.write_field_stop()?;
+        s.write_struct_end()?;
         Ok(())
     }
 }
@@ -155,9 +155,9 @@ impl Serialize for HellohelloArgs {
     fn serialize<S>(&self, s: &mut S) -> Result<(), Error>
         where S: Serializer + ThriftSerializer
     {
-        try!(s.write_struct_begin("Hello_hello_Args"));
-        try!(s.write_field_stop());
-        try!(s.write_struct_end());
+        s.write_struct_begin("Hello_hello_Args")?;
+        s.write_field_stop()?;
+        s.write_struct_end()?;
         Ok(())
     }
 }
@@ -168,26 +168,26 @@ impl Deserialize for Hellohello_nameArgs {
     fn deserialize<D>(de: &mut D) -> Result<Self, Error>
         where D: Deserializer + ThriftDeserializer,
     {
-        try!(de.read_struct_begin());
+        de.read_struct_begin()?;
         let mut name = None;
         loop {
-            let scheme_field = try!(de.read_field_begin());
+            let scheme_field = de.read_field_begin()?;
             if scheme_field.ty == ThriftType::Stop {
                 break;
             };
             match scheme_field.seq {
                 1 => {
                     if scheme_field.ty == ThriftType::String {
-                        name = Some(try!(de.deserialize_str()));
+                        name = Some(de.deserialize_str()?);
                     } else {
                         // skip
                     }
                 },
                 _ => (),// skip
             }
-            try!(de.read_field_end());
+            de.read_field_end()?;
         };
-        try!(de.read_struct_end());
+        de.read_struct_end()?;
         let args = Hellohello_nameArgs {
             name: name.unwrap(),
             
@@ -200,10 +200,10 @@ impl Deserialize for HellohelloArgs {
     fn deserialize<D>(de: &mut D) -> Result<Self, Error>
         where D: Deserializer + ThriftDeserializer,
     {
-        try!(de.read_struct_begin());
+        de.read_struct_begin()?;
         
         loop {
-            let scheme_field = try!(de.read_field_begin());
+            let scheme_field = de.read_field_begin()?;
             if scheme_field.ty == ThriftType::Stop {
                 break;
             };
@@ -211,9 +211,9 @@ impl Deserialize for HellohelloArgs {
                 
                 _ => (),// skip
             }
-            try!(de.read_field_end());
+            de.read_field_end()?;
         };
-        try!(de.read_struct_end());
+        de.read_struct_end()?;
         let args = HellohelloArgs {
             
         };
