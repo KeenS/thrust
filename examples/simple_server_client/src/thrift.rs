@@ -19,9 +19,9 @@ use std::str::FromStr;
 
 pub trait HelloService: Send {
     // FIXME: generate result type
-fn hello_name(&self, name: String) -> BoxFuture<String, ()>;
+    fn hello_name(&self, name: String) -> BoxFuture<String, ()>;
     // FIXME: generate result type
-fn hello(&self) -> BoxFuture<String, ()>;
+    fn hello(&self) -> BoxFuture<String, ()>;
 }
 
 
@@ -42,12 +42,12 @@ impl Serialize for HelloServiceMethodArgs {
                 s.write_message_begin("hello_name", ThriftMessageType::Call)?;
                 b.serialize(s)?;
                 s.write_message_end()?;
-            },
+            }
             &Ahello(ref b) => {
                 s.write_message_begin("hello", ThriftMessageType::Call)?;
                 b.serialize(s)?;
                 s.write_message_end()?;
-            },
+            }
         };
         Ok(())
     }
@@ -55,14 +55,19 @@ impl Serialize for HelloServiceMethodArgs {
 
 impl Deserialize for HelloServiceMethodArgs {
     fn deserialize<D>(de: &mut D) -> Result<Self, Error>
-        where D: Deserializer + ThriftDeserializer,
+        where D: Deserializer + ThriftDeserializer
     {
         let msg = de.read_message_begin()?;
-        //assert!(msg.type) == $msg_type
+        // assert!(msg.type) == $msg_type
         let ret = match msg.name.as_ref() {
-            "hello_name" => HelloServiceMethodArgs::Ahello_name(Hellohello_nameArgs::deserialize(de)?),
+            "hello_name" => {
+                HelloServiceMethodArgs::Ahello_name(Hellohello_nameArgs::deserialize(de)?)
+            }
             "hello" => HelloServiceMethodArgs::Ahello(HellohelloArgs::deserialize(de)?),
-            _ => return Err(Error::from(io::Error::new(io::ErrorKind::InvalidData, "failed to parse thrift data"))),
+            _ => {
+                return Err(Error::from(io::Error::new(io::ErrorKind::InvalidData,
+                                                      "failed to parse thrift data")))
+            }
         };
         let _ = de.read_message_end()?;
         Ok(ret)
@@ -76,7 +81,6 @@ pub enum HelloServiceMethodReturn {
     Rhello_name(Result<String, ()>),
     // FIXME: generate exception too
     Rhello(Result<String, ()>),
-
 }
 
 
@@ -92,20 +96,20 @@ impl Serialize for HelloServiceMethodReturn {
                         s.write_message_begin("hello_name", ThriftMessageType::Reply)?;
                         b.serialize(s)?;
                         s.write_message_end()?;
-                    },
+                    }
                     &Err(_) => panic!("exception is not supported yet"),
                 }
-            },
+            }
             &Rhello(ref b) => {
                 match b {
                     &Ok(ref b) => {
                         s.write_message_begin("hello", ThriftMessageType::Reply)?;
                         b.serialize(s)?;
                         s.write_message_end()?;
-                    },
+                    }
                     &Err(_) => panic!("exception is not supported yet"),
                 }
-            },
+            }
         };
         Ok(())
     }
@@ -113,14 +117,17 @@ impl Serialize for HelloServiceMethodReturn {
 
 impl Deserialize for HelloServiceMethodReturn {
     fn deserialize<D>(de: &mut D) -> Result<Self, Error>
-        where D: Deserializer + ThriftDeserializer,
+        where D: Deserializer + ThriftDeserializer
     {
         let msg = de.read_message_begin()?;
         // if msg.type == return
         let ret = match msg.name.as_ref() {
             "hello_name" => HelloServiceMethodReturn::Rhello_name(Ok(String::deserialize(de)?)),
             "hello" => HelloServiceMethodReturn::Rhello(Ok(String::deserialize(de)?)),
-            _ => return Err(Error::from(io::Error::new(io::ErrorKind::InvalidData, "failed to parse thrift data"))),
+            _ => {
+                return Err(Error::from(io::Error::new(io::ErrorKind::InvalidData,
+                                                      "failed to parse thrift data")))
+            }
         };
         // else msg.type == exception
         // FIXME:
@@ -166,7 +173,7 @@ impl Serialize for HellohelloArgs {
 
 impl Deserialize for Hellohello_nameArgs {
     fn deserialize<D>(de: &mut D) -> Result<Self, Error>
-        where D: Deserializer + ThriftDeserializer,
+        where D: Deserializer + ThriftDeserializer
     {
         de.read_struct_begin()?;
         let mut name = None;
@@ -182,41 +189,36 @@ impl Deserialize for Hellohello_nameArgs {
                     } else {
                         // skip
                     }
-                },
+                }
                 _ => (),// skip
             }
             de.read_field_end()?;
-        };
+        }
         de.read_struct_end()?;
-        let args = Hellohello_nameArgs {
-            name: name.unwrap(),
-            
-        };
+        let args = Hellohello_nameArgs { name: name.unwrap() };
         Ok(args)
     }
 }
 
 impl Deserialize for HellohelloArgs {
     fn deserialize<D>(de: &mut D) -> Result<Self, Error>
-        where D: Deserializer + ThriftDeserializer,
+        where D: Deserializer + ThriftDeserializer
     {
         de.read_struct_begin()?;
-        
+
         loop {
             let scheme_field = de.read_field_begin()?;
             if scheme_field.ty == ThriftType::Stop {
                 break;
             };
             match scheme_field.seq {
-                
+
                 _ => (),// skip
             }
             de.read_field_end()?;
-        };
+        }
         de.read_struct_end()?;
-        let args = HellohelloArgs {
-            
-        };
+        let args = HellohelloArgs {};
         Ok(args)
     }
 }
@@ -252,7 +254,6 @@ pub struct HelloClientProto;
 impl<T: Io + 'static> ClientProto<T> for HelloClientProto {
     type Request = HelloServiceMethodArgs;
     type Response = HelloServiceMethodReturn;
-    type Error = io::Error;
     type Transport = Framed<T, HelloClientCodec>;
     type BindTransport = Result<Self::Transport, io::Error>;
 
@@ -262,26 +263,22 @@ impl<T: Io + 'static> ClientProto<T> for HelloClientProto {
 }
 
 
-pub struct HelloClient<T: 'static+Io> {
+pub struct HelloClient<T: 'static + Io> {
     client: ClientService<T, HelloClientProto>,
 }
 
-impl <T: 'static+Io>HelloClient<T> {
+impl<T: 'static + Io> HelloClient<T> {
     pub fn new(client: ClientService<T, HelloClientProto>) -> Self {
-        HelloClient {
-            client: client,
-        }
+        HelloClient { client: client }
     }
 }
 
-impl <T: 'static+Io>HelloService for HelloClient<T> {
+impl<T: 'static + Io> HelloService for HelloClient<T> {
     // FIXME: generate result type
-fn hello_name(&self, name: String) -> BoxFuture<String, ()> {
+    fn hello_name(&self, name: String) -> BoxFuture<String, ()> {
         use thrift::HelloServiceMethodArgs::*;
         use thrift::HelloServiceMethodReturn::*;
-        let args = Hellohello_nameArgs {
-            name: name,
-        };
+        let args = Hellohello_nameArgs { name: name };
         self.client
             .call(Ahello_name(args))
             .then(|ret| match ret {
@@ -289,14 +286,14 @@ fn hello_name(&self, name: String) -> BoxFuture<String, ()> {
                 Ok(Rhello_name(Err(_))) |
                 Err(_) => panic!("exception is not supported yet"),
                 Ok(_) => panic!("tokio-thrift internal error. may be a bug"),
-            }).boxed()
+            })
+            .boxed()
     }
     // FIXME: generate result type
-fn hello(&self) -> BoxFuture<String, ()> {
+    fn hello(&self) -> BoxFuture<String, ()> {
         use thrift::HelloServiceMethodArgs::*;
         use thrift::HelloServiceMethodReturn::*;
-        let args = HellohelloArgs {
-        };
+        let args = HellohelloArgs {};
         self.client
             .call(Ahello(args))
             .then(|ret| match ret {
@@ -304,7 +301,8 @@ fn hello(&self) -> BoxFuture<String, ()> {
                 Ok(Rhello(Err(_))) |
                 Err(_) => panic!("exception is not supported yet"),
                 Ok(_) => panic!("tokio-thrift internal error. may be a bug"),
-            }).boxed()
+            })
+            .boxed()
     }
 }
 
@@ -337,7 +335,6 @@ pub struct HelloServerProto;
 impl<T: Io + 'static> ServerProto<T> for HelloServerProto {
     type Request = HelloServiceMethodArgs;
     type Response = HelloServiceMethodReturn;
-    type Error = io::Error;
     type Transport = Framed<T, HelloServerCodec>;
     type BindTransport = Result<Self::Transport, io::Error>;
 
@@ -347,22 +344,17 @@ impl<T: Io + 'static> ServerProto<T> for HelloServerProto {
 }
 
 #[derive(Clone)]
-pub struct HelloServer<T>
-{
+pub struct HelloServer<T> {
     inner: T,
 }
 
-impl <T: HelloService>HelloServer<T>
-{
-    pub fn new(inner: T) -> Self
-    {
-        HelloServer {
-            inner: inner
-        }
+impl<T: HelloService> HelloServer<T> {
+    pub fn new(inner: T) -> Self {
+        HelloServer { inner: inner }
     }
 }
 
-impl <T>Service for HelloServer<T>
+impl<T> Service for HelloServer<T>
     where T: HelloService
 {
     type Request = HelloServiceMethodArgs;
@@ -375,11 +367,18 @@ impl <T>Service for HelloServer<T>
         use thrift::HelloServiceMethodArgs::*;
         use thrift::HelloServiceMethodReturn::*;
         match req {
-            Ahello_name(_args)  => self.inner.hello_name(
-                _args.name,
-            ).then(|r| finished(Rhello_name(r))).boxed(),
-            Ahello(_args)  => self.inner.hello(
-            ).then(|r| finished(Rhello(r))).boxed(),
+            Ahello_name(_args) => {
+                self.inner
+                    .hello_name(_args.name)
+                    .then(|r| finished(Rhello_name(r)))
+                    .boxed()
+            }
+            Ahello(_args) => {
+                self.inner
+                    .hello()
+                    .then(|r| finished(Rhello(r)))
+                    .boxed()
+            }
         }
     }
 }

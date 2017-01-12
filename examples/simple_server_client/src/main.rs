@@ -18,12 +18,12 @@ struct HelloServerImpl;
 
 // implement HelloService
 impl HelloService for HelloServerImpl {
-    fn hello_name(&self, name: String) -> BoxFuture<String, io::Error> {
+    fn hello_name(&self, name: String) -> BoxFuture<String, ()> {
         println!("GOT: {:?}", name);
         Box::new(done(Ok(format!("Hello, {}", name))))
     }
 
-    fn hello(&self) -> BoxFuture<String, io::Error> {
+    fn hello(&self) -> BoxFuture<String, ()> {
         println!("CALLED");
         Box::new(done(Ok(format!("Hello, World"))))
     }
@@ -44,7 +44,7 @@ pub fn main() {
     let mut core = Core::new().unwrap();
     // Now our client. We use the same core as for the server - usually though this would be
     // done in a separate program most likely on a separate machine.
-    let client =  TcpClient::new(HelloClientProto);
+    let client = TcpClient::new(HelloClientProto);
     let hund_millis = time::Duration::from_millis(100);
     let hello_client;
     // just need a label, not looping
@@ -56,10 +56,10 @@ pub fn main() {
                 Ok(c) => {
                     hello_client = c;
                     break 'client;
-                },
+                }
                 Err(_) => {
                     sleep(hund_millis);
-                },
+                }
             }
         }
         panic!("failed to connect to the server");
