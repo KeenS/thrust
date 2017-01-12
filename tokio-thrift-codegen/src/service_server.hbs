@@ -7,7 +7,11 @@ impl Codec for {{service.ident}}ServerCodec {
     fn decode(&mut self, buf: &mut EasyBuf) -> Result<Option<Self::In>, io::Error> {
         let cur = io::Cursor::new(buf);
         let mut protocol = BinaryProtocol::from(cur);
-        let ret = Self::In::deserialize(&mut protocol)?;
+        let ret = match Self::In::deserialize(&mut protocol) {
+            Ok(ret) => ret,
+            Err(Error::EOF) => return Ok(None),
+            Err(e) => return Err(io::Error::from(e)),
+        };
         let cur = protocol.into_inner();
         let size = cur.position();
         let buf = cur.into_inner();

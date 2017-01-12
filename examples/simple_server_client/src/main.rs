@@ -4,11 +4,10 @@ extern crate tokio_service as service;
 extern crate tokio_proto as proto;
 extern crate simple_server_client;
 
-use std::io;
 use std::thread::{spawn, sleep};
 use std::time;
-use futures::{Future, done};
-use futures::future::BoxFuture;
+use futures::Future;
+use futures::future::{ok, BoxFuture};
 use tokio::reactor::Core;
 use proto::{TcpServer, TcpClient};
 use simple_server_client::thrift::*;
@@ -20,12 +19,12 @@ struct HelloServerImpl;
 impl HelloService for HelloServerImpl {
     fn hello_name(&self, name: String) -> BoxFuture<String, ()> {
         println!("GOT: {:?}", name);
-        Box::new(done(Ok(format!("Hello, {}", name))))
+        Box::new(ok(format!("Hello, {}", name)))
     }
 
     fn hello(&self) -> BoxFuture<String, ()> {
         println!("CALLED");
-        Box::new(done(Ok(format!("Hello, World"))))
+        Box::new(ok(format!("Hello, World")))
     }
 }
 

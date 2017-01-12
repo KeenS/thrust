@@ -7,11 +7,12 @@ use std::string::FromUtf8Error;
 
 #[derive(Debug)]
 pub enum Error {
+    EOF,
     Byteorder(byteorder::Error),
     Io(io::Error),
     Utf8Error(FromUtf8Error),
     BadVersion,
-    ProtocolVersionMissing
+    ProtocolVersionMissing,
 }
 
 impl fmt::Display for Error {
@@ -23,6 +24,7 @@ impl fmt::Display for Error {
 impl error::Error for Error {
     fn description(&self) -> &str {
         match self {
+            &Error::EOF => "eof",
             &Error::Byteorder(ref e) => "internal error of byteorder",
             &Error::Io(ref e) => "internal error of io",
             &Error::Utf8Error(ref e) => "internal error of utf8 conversion",
@@ -33,6 +35,7 @@ impl error::Error for Error {
 
     fn cause(&self) -> Option<&error::Error> {
         match self {
+            &Error::EOF => None,
             &Error::Byteorder(ref e) => Some(e),
             &Error::Io(ref e) => Some(e),
             &Error::Utf8Error(ref e) => Some(e),
@@ -45,7 +48,10 @@ impl error::Error for Error {
 
 impl convert::From<byteorder::Error> for Error {
     fn from(err: byteorder::Error) -> Error {
-        Error::Byteorder(err)
+        match err {
+            byteorder::Error::UnexpectedEOF => Error::EOF,
+            err => Error::Byteorder(err),
+        }
     }
 }
 
@@ -65,7 +71,7 @@ impl convert::From<Error> for io::Error {
     fn from(err: Error) -> io::Error {
         match err {
             Error::Io(e) => e,
-            e => io::Error::new(io::ErrorKind::InvalidData, e)
+            e => io::Error::new(io::ErrorKind::InvalidData, e),
         }
     }
 }
@@ -86,7 +92,7 @@ pub enum ThriftType {
     Struct = 12,
     Map = 13,
     Set = 14,
-    List = 15
+    List = 15,
 }
 
 impl convert::From<i8> for ThriftType {
@@ -106,7 +112,7 @@ impl convert::From<i8> for ThriftType {
             13 => ThriftType::Map,
             14 => ThriftType::Set,
             15 => ThriftType::List,
-            e => panic!("Unexpected value: {}", e)
+            e => panic!("Unexpected value: {}", e),
         }
     }
 }
@@ -116,7 +122,7 @@ pub enum ThriftMessageType {
     Call = 1,
     Reply = 2,
     Exception = 3,
-    Oneway = 4
+    Oneway = 4,
 }
 
 impl convert::From<i8> for ThriftMessageType {
@@ -126,7 +132,7 @@ impl convert::From<i8> for ThriftMessageType {
             2 => ThriftMessageType::Reply,
             3 => ThriftMessageType::Exception,
             4 => ThriftMessageType::Oneway,
-            _ => panic!("Unexpected value for ThriftMessageType.")
+            _ => panic!("Unexpected value for ThriftMessageType."),
         }
     }
 }
@@ -171,7 +177,10 @@ pub trait Serialize {
 }
 
 pub trait ThriftSerializer {
-    fn write_message_begin(&mut self, _name: &str, _message_type: ThriftMessageType) -> Result<(), Error> {
+    fn write_message_begin(&mut self,
+                           _name: &str,
+                           _message_type: ThriftMessageType)
+                           -> Result<(), Error> {
         Ok(())
     }
 
@@ -204,13 +213,13 @@ pub trait ThriftSerializer {
 pub struct ThriftMessage {
     pub name: String,
     pub ty: ThriftMessageType,
-    pub seq: i16
+    pub seq: i16,
 }
 #[derive(Debug)]
 pub struct ThriftField {
     pub name: Option<String>,
     pub ty: ThriftType,
-    pub seq: i16
+    pub seq: i16,
 }
 
 pub trait ThriftDeserializer {

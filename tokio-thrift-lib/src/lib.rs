@@ -11,4 +11,4 @@ pub mod protocol;
 mod result;
 pub mod transport;
 
-pub use result::{ThrustResult, ThrustError};
+pub use result::{ThriftResult, ThriftError};
