@@ -27,7 +27,6 @@ pub struct {{service.ident}}ServerProto;
 impl<T: Io + 'static> ServerProto<T> for {{service.ident}}ServerProto {
     type Request = {{service.ident}}ServiceMethodArgs;
     type Response = {{service.ident}}ServiceMethodReturn;
-    type Error = io::Error;
     type Transport = Framed<T, {{service.ident}}ServerCodec>;
     type BindTransport = Result<Self::Transport, io::Error>;
 
