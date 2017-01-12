@@ -30,15 +30,15 @@ macro_rules! panictry {
 }
 
 
-fn codegen<'cx>(cx: &'cx mut ExtCtxt, text: String, file: String)
-        -> Box<MacResult + 'cx> {
+fn codegen<'cx>(cx: &'cx mut ExtCtxt, text: String, file: String) -> Box<MacResult + 'cx> {
     let mut output = Vec::new();
     let doc = Document::parse(&text)
         .expect("failed to parse thrift file")
         .expect("EOF while parsing thrift file");
     {
         let ns = find_rust_namespace(&doc).expect("cannot find namespace");
-    output.write_all(format!("mod {} {{", ns.module).as_ref()).expect("internal error failed to write the vec");
+        output.write_all(format!("mod {} {{", ns.module).as_ref())
+            .expect("internal error failed to write the vec");
     }
     compile(doc, &mut output).expect("failed to generate code");
     output.write_all(format!("}}").as_ref()).expect("internal error failed to write the vec");
@@ -56,15 +56,18 @@ fn codegen<'cx>(cx: &'cx mut ExtCtxt, text: String, file: String)
         p: parse::parser::Parser<'a>,
     }
     impl<'a> base::MacResult for ExpandResult<'a> {
-        fn make_items(mut self: Box<ExpandResult<'a>>)
-                      -> Option<SmallVector<ptr::P<ast::Item>>> {
-            let mut ret = SmallVector::zero();
+        fn make_items(mut self: Box<ExpandResult<'a>>) -> Option<SmallVector<ptr::P<ast::Item>>> {
+            let mut ret = SmallVector::default();
             while self.p.token != token::Eof {
                 match panictry!(self.p.parse_item()) {
                     Some(item) => ret.push(item),
-                    None => panic!(self.p.diagnostic().span_fatal(self.p.span,
-                                                                  &format!("expected item, found `{}`",
-                                                                           self.p.this_token_to_string())))
+                    None => {
+                        panic!(self.p
+                            .diagnostic()
+                            .span_fatal(self.p.span,
+                                        &format!("expected item, found `{}`",
+                                                 self.p.this_token_to_string())))
+                    }
                 }
             }
             Some(ret)
@@ -75,8 +78,10 @@ fn codegen<'cx>(cx: &'cx mut ExtCtxt, text: String, file: String)
 
 }
 
-fn macro_thrift_file<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[TokenTree])
-        -> Box<MacResult + 'cx> {
+fn macro_thrift_file<'cx>(cx: &'cx mut ExtCtxt,
+                          sp: Span,
+                          tts: &[TokenTree])
+                          -> Box<MacResult + 'cx> {
 
     let file = match get_single_str_from_tts(cx, sp, tts, "thrift_file!") {
         Some(f) => f,
@@ -85,15 +90,16 @@ fn macro_thrift_file<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[TokenTree])
 
 
     let mut text = String::new();
-    File::open(&file).expect(&format!("thrift file not found: {}", &file))
-        .read_to_string(&mut text).expect(&format!("failed to read file: {}", &file));
+    File::open(&file)
+        .expect(&format!("thrift file not found: {}", &file))
+        .read_to_string(&mut text)
+        .expect(&format!("failed to read file: {}", &file));
 
     codegen(cx, text, file)
 
 }
 
-fn macro_thrift<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[TokenTree])
-                     -> Box<MacResult + 'cx> {
+fn macro_thrift<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[TokenTree]) -> Box<MacResult + 'cx> {
 
     let text = match get_single_str_from_tts(cx, sp, tts, "thrift!") {
         Some(f) => f,
