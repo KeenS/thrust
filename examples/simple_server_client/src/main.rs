@@ -65,6 +65,8 @@ pub fn main() {
         panic!("failed to connect to the server");
     }
 
+    // Now you can call service methods as you defined.
+    // Need to `core.run` because the return values are wrapped by future.
     let hello_ret = hello_client.hello();
     let hello_name_ret = hello_client.hello_name("keen".to_string());
 
