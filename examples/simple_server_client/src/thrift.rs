@@ -6,6 +6,7 @@ use tokio_thrift::protocol::{ThriftDeserializer, ThriftSerializer, ThriftMessage
 use tokio_thrift::protocol::{Error, ThriftType, BinaryProtocol};
 use tokio_thrift::protocol::{Serializer, Deserializer};
 use tokio_thrift::protocol::{Deserialize, Serialize};
+use tokio_thrift::tokio::{ThriftCodec, ThriftProto};
 use tokio_core::reactor::Handle;
 use tokio_core::net::TcpStream;
 use tokio_core::io::{Codec, EasyBuf, Io, Framed};
@@ -222,48 +223,7 @@ impl Deserialize for HellohelloArgs {
 }
 
 
-pub struct HelloClientCodec;
-
-impl Codec for HelloClientCodec {
-    type In = HelloServiceMethodReturn;
-    type Out = HelloServiceMethodArgs;
-
-    fn decode(&mut self, buf: &mut EasyBuf) -> Result<Option<Self::In>, io::Error> {
-        let cur = io::Cursor::new(buf);
-        let mut protocol = BinaryProtocol::from(cur);
-        let ret = match Self::In::deserialize(&mut protocol) {
-            Ok(ret) => ret,
-            Err(Error::EOF) => return Ok(None),
-            Err(e) => return Err(io::Error::from(e)),
-        };
-        let cur = protocol.into_inner();
-        let size = cur.position();
-        let buf = cur.into_inner();
-        buf.drain_to(size as usize);
-        Ok(Some(ret))
-    }
-
-    fn encode(&mut self, msg: Self::Out, buf: &mut Vec<u8>) -> io::Result<()> {
-        let mut protocol = BinaryProtocol::from(buf);
-        msg.serialize(&mut protocol).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
-
-    }
-}
-
-
-pub struct HelloClientProto;
-
-impl<T: Io + 'static> ClientProto<T> for HelloClientProto {
-    type Request = HelloServiceMethodArgs;
-    type Response = HelloServiceMethodReturn;
-    type Transport = Framed<T, HelloClientCodec>;
-    type BindTransport = Result<Self::Transport, io::Error>;
-
-    fn bind_transport(&self, io: T) -> Self::BindTransport {
-        Ok(io.framed(HelloClientCodec))
-    }
-}
-
+type HelloClientProto = ThriftProto<HelloServiceMethodArgs, HelloServiceMethodReturn>;
 
 pub struct HelloClient<T: 'static+Io> {
     client: ClientService<T, HelloClientProto>,
@@ -308,47 +268,6 @@ fn hello(&self) -> BoxFuture<String, ()> {
                 Err(_) => panic!("exception is not supported yet"),
                 Ok(_) => panic!("tokio-thrift internal error. may be a bug"),
             }).boxed()
-    }
-}
-
-pub struct HelloServerCodec;
-
-impl Codec for HelloServerCodec {
-    type In = HelloServiceMethodArgs;
-    type Out = HelloServiceMethodReturn;
-
-    fn decode(&mut self, buf: &mut EasyBuf) -> Result<Option<Self::In>, io::Error> {
-        let cur = io::Cursor::new(buf);
-        let mut protocol = BinaryProtocol::from(cur);
-        let ret = match Self::In::deserialize(&mut protocol) {
-            Ok(ret) => ret,
-            Err(Error::EOF) => return Ok(None),
-            Err(e) => return Err(io::Error::from(e)),
-        };
-        let cur = protocol.into_inner();
-        let size = cur.position();
-        let buf = cur.into_inner();
-        buf.drain_to(size as usize);
-        Ok(Some(ret))
-    }
-
-    fn encode(&mut self, msg: Self::Out, buf: &mut Vec<u8>) -> io::Result<()> {
-        let mut protocol = BinaryProtocol::from(buf);
-        msg.serialize(&mut protocol).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
-    }
-}
-
-
-pub struct HelloServerProto;
-
-impl<T: Io + 'static> ServerProto<T> for HelloServerProto {
-    type Request = HelloServiceMethodArgs;
-    type Response = HelloServiceMethodReturn;
-    type Transport = Framed<T, HelloServerCodec>;
-    type BindTransport = Result<Self::Transport, io::Error>;
-
-    fn bind_transport(&self, io: T) -> Self::BindTransport {
-        Ok(io.framed(HelloServerCodec))
     }
 }
 

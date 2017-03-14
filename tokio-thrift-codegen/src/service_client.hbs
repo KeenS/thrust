@@ -1,45 +1,4 @@
-pub struct {{service.ident}}ClientCodec;
-
-impl Codec for {{service.ident}}ClientCodec {
-    type In = {{service.ident}}ServiceMethodReturn;
-    type Out = {{service.ident}}ServiceMethodArgs;
-
-    fn decode(&mut self, buf: &mut EasyBuf) -> Result<Option<Self::In>, io::Error> {
-        let cur = io::Cursor::new(buf);
-        let mut protocol = BinaryProtocol::from(cur);
-        let ret = match Self::In::deserialize(&mut protocol) {
-            Ok(ret) => ret,
-            Err(Error::EOF) => return Ok(None),
-            Err(e) => return Err(io::Error::from(e)),
-        };
-        let cur = protocol.into_inner();
-        let size = cur.position();
-        let buf = cur.into_inner();
-        buf.drain_to(size as usize);
-        Ok(Some(ret))
-    }
-
-    fn encode(&mut self, msg: Self::Out, buf: &mut Vec<u8>) -> io::Result<()> {
-        let mut protocol = BinaryProtocol::from(buf);
-        msg.serialize(&mut protocol).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
-
-    }
-}
-
-
-pub struct {{service.ident}}ClientProto;
-
-impl<T: Io + 'static> ClientProto<T> for {{service.ident}}ClientProto {
-    type Request = {{service.ident}}ServiceMethodArgs;
-    type Response = {{service.ident}}ServiceMethodReturn;
-    type Transport = Framed<T, {{service.ident}}ClientCodec>;
-    type BindTransport = Result<Self::Transport, io::Error>;
-
-    fn bind_transport(&self, io: T) -> Self::BindTransport {
-        Ok(io.framed({{service.ident}}ClientCodec))
-    }
-}
-
+type {{service.ident}}ClientProto = ThriftProto<{{service.ident}}ServiceMethodArgs, {{service.ident}}ServiceMethodReturn>;
 
 pub struct {{service.ident}}Client<T: 'static+Io> {
     client: ClientService<T, {{service.ident}}ClientProto>,

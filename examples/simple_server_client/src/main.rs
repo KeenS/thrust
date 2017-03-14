@@ -3,14 +3,15 @@ extern crate tokio_core as tokio;
 extern crate tokio_service as service;
 extern crate tokio_proto as proto;
 extern crate simple_server_client;
+extern crate tokio_thrift;
 
 use std::thread::{spawn, sleep};
 use std::time;
 use futures::Future;
 use futures::future::{ok, BoxFuture};
 use tokio::reactor::Core;
-use proto::{TcpServer, TcpClient};
 use simple_server_client::thrift::*;
+use tokio_thrift::tokio::{new_tcp_client, new_tcp_server};
 
 #[derive(Clone)]
 struct HelloServerImpl;
@@ -36,14 +37,14 @@ pub fn main() {
     // since server.serve blocks, spawn a new thread and won't wait for it terminate
     let _handle = spawn(move || {
         // instanciate and start the server.
-        let server = TcpServer::new(HelloServerProto, addr);
+        let server = new_tcp_server(addr);
         server.serve(|| Ok(HelloServer::new(HelloServerImpl)))
     });
 
     let mut core = Core::new().unwrap();
     // Now our client. We use the same core as for the server - usually though this would be
     // done in a separate program most likely on a separate machine.
-    let client = TcpClient::new(HelloClientProto);
+    let client = new_tcp_client();
     let hund_millis = time::Duration::from_millis(100);
     let hello_client;
     // just need a label, not looping

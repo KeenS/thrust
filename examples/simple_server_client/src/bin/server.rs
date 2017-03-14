@@ -3,10 +3,11 @@ extern crate tokio_core as tokio;
 extern crate tokio_service as service;
 extern crate tokio_proto as proto;
 extern crate simple_server_client;
+extern crate tokio_thrift;
 
 use futures::{finished, failed, Future};
 use futures::future::BoxFuture;
-use proto::TcpServer;
+use tokio_thrift::tokio::new_tcp_server;
 use simple_server_client::thrift::*;
 
 #[derive(Clone)]
@@ -36,6 +37,6 @@ pub fn main() {
     let addr = "127.0.0.1:12345".parse().unwrap();
 
     // instanciate and start the server.
-    let server = TcpServer::new(HelloServerProto, addr);
+    let server = new_tcp_server(addr);
     server.serve(|| Ok(HelloServer::new(HelloServerImpl)))
 }

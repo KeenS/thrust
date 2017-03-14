@@ -3,11 +3,12 @@ extern crate tokio_core as tokio;
 extern crate tokio_service as service;
 extern crate tokio_proto as proto;
 extern crate simple_server_client;
+extern crate tokio_thrift;
 
 use futures::Future;
 use tokio::reactor::Core;
-use proto::TcpClient;
 use simple_server_client::thrift::*;
+use tokio_thrift::tokio::new_tcp_client;
 
 
 pub fn main() {
@@ -17,7 +18,7 @@ pub fn main() {
 
     let mut core = Core::new().unwrap();
 
-    let client =  TcpClient::new(HelloClientProto);
+    let client = new_tcp_client();
     let client = client.connect(&addr, &core.handle())
         .map(HelloClient::new);
     let client = core.run(client).expect("failed to connect the server");

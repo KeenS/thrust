@@ -10,5 +10,6 @@ extern crate log;
 pub mod protocol;
 mod result;
 pub mod transport;
+pub mod tokio;
 
 pub use result::{ThriftResult, ThriftError};
