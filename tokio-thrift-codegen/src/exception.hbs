@@ -1,9 +1,12 @@
+#[allow(dead_code, non_snake_case, non_camel_case_types)]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct {{exception.ident}} {
     {{~#each exception.fields as |field|}}
     {{#if field.optional ~}}
+    #[allow(dead_code, non_snake_case)]
     pub {{field.ident}}: Option<{{to_rust field.ty}}>,
     {{~^~}}
+    #[allow(dead_code, non_snake_case)]
     pub {{field.ident}}: {{to_rust field.ty}},
     {{~/if~}}
     {{~/each}}
@@ -21,9 +24,9 @@ impl Error for {{exception.ident}} {
     }
 }
 
-impl Serialize for {{exception.ident}} {
-    fn serialize<S>(&self, s: &mut S) -> Result<(), Error>
-        where S: Serializer + ThriftSerializer
+impl ::tokio_thrift::protocol::Serialize for {{exception.ident}} {
+    fn serialize<S>(&self, s: &mut S) -> Result<(), ::tokio_thrift::protocol::Error>
+        where S: ::tokio_thrift::protocol::Serializer + ::tokio_thrift::protocol::ThriftSerializer
     {
         s.write_struct_begin("{{exception.ident}}")?;
         {{#each exception.fields as |field|~}}
@@ -46,9 +49,9 @@ impl Serialize for {{exception.ident}} {
 }
 
 
-impl Deserialize for {{exception.ident}} {
-    fn deserialize<D>(de: &mut D) -> Result<Self, Error>
-        where D: Deserializer + ThriftDeserializer,
+impl ::tokio_thrift::protocol::Deserialize for {{exception.ident}} {
+    fn deserialize<D>(de: &mut D) -> Result<Self, ::tokio_thrift::protocol::Error>
+        where D: ::tokio_thrift::protocol::Deserializer + ::tokio_thrift::protocol::ThriftDeserializer,
     {
         de.read_struct_begin()?;
         {{~#each exception.fields as |field|}}
@@ -56,7 +59,7 @@ impl Deserialize for {{exception.ident}} {
         {{~/each}}
         loop {
             let scheme_field = de.read_field_begin()?;
-            if scheme_field.ty == ThriftType::Stop {
+            if scheme_field.ty == ::tokio_thrift::protocol::ThriftType::Stop {
                 break;
             };
             match scheme_field.seq {

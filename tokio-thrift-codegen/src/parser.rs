@@ -98,18 +98,18 @@ impl Encodable for Ty {
 impl Ty {
     pub fn to_protocol(&self) -> String {
         match self {
-            &Ty::String => "ThriftType::String".to_string(),
-            &Ty::Void => "ThriftType::Void".to_string(),
-            &Ty::Bool => "ThriftType::Bool".to_string(),
-            &Ty::Byte => "ThriftType::Byte".to_string(),
-            &Ty::Double => "ThriftType::Double".to_string(),
-            &Ty::I16 => "ThriftType::I16".to_string(),
-            &Ty::I32 => "ThriftType::I32".to_string(),
-            &Ty::I64 => "ThriftType::I64".to_string(),
-            &Ty::Map(_, _) => "ThriftType::Map".to_string(),
-            &Ty::List(_) => "ThriftType::List".to_string(),
-            &Ty::Set(_) => "ThriftType::Set".to_string(),
-            &Ty::Binary => "ThriftType::List".to_string(),
+            &Ty::String => "::tokio_thrift::protocol::ThriftType::String".to_string(),
+            &Ty::Void => "::tokio_thrift::protocol::ThriftType::Void".to_string(),
+            &Ty::Bool => "::tokio_thrift::protocol::ThriftType::Bool".to_string(),
+            &Ty::Byte => "::tokio_thrift::protocol::ThriftType::Byte".to_string(),
+            &Ty::Double => "::tokio_thrift::protocol::ThriftType::Double".to_string(),
+            &Ty::I16 => "::tokio_thrift::protocol::ThriftType::I16".to_string(),
+            &Ty::I32 => "::tokio_thrift::protocol::ThriftType::I32".to_string(),
+            &Ty::I64 => "::tokio_thrift::protocol::ThriftType::I64".to_string(),
+            &Ty::Map(_, _) => "::tokio_thrift::protocol::ThriftType::Map".to_string(),
+            &Ty::List(_) => "::tokio_thrift::protocol::ThriftType::List".to_string(),
+            &Ty::Set(_) => "::tokio_thrift::protocol::ThriftType::Set".to_string(),
+            &Ty::Binary => "::tokio_thrift::protocol::ThriftType::List".to_string(),
             &Ty::Ident(ref s) => s.to_string(),
             t => panic!("Not compatible with ThriftType: {:?}", t)
         }

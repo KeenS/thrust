@@ -17,7 +17,7 @@ pub enum Error {
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.fmt(f)
+        fmt::Debug::fmt(self, f)
     }
 }
 
@@ -25,9 +25,9 @@ impl error::Error for Error {
     fn description(&self) -> &str {
         match self {
             &Error::EOF => "eof",
-            &Error::Byteorder(ref e) => "internal error of byteorder",
-            &Error::Io(ref e) => "internal error of io",
-            &Error::Utf8Error(ref e) => "internal error of utf8 conversion",
+            &Error::Byteorder(_) => "internal error of byteorder",
+            &Error::Io(_) => "internal error of io",
+            &Error::Utf8Error(_) => "internal error of utf8 conversion",
             &Error::BadVersion => "bad version",
             &Error::ProtocolVersionMissing => "protocol version missing",
         }

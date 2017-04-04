@@ -1,9 +1,9 @@
 use std::marker::PhantomData;
 use tokio_core::io::{Codec, EasyBuf, Io, Framed};
-use tokio_proto::pipeline::{ServerProto, ClientProto, Pipeline, ClientService};
+use tokio_proto::pipeline::{ServerProto, ClientProto, Pipeline};
 use tokio_proto::{TcpServer, TcpClient};
 use std::io;
-use protocol::{Error, ThriftType, BinaryProtocol};
+use protocol::{Error, BinaryProtocol};
 use protocol::{Deserialize, Serialize};
 use std::net::SocketAddr;
 
@@ -37,7 +37,8 @@ impl<In: Deserialize, Out: Serialize> Codec for ThriftCodec<In, Out> {
 
     fn encode(&mut self, msg: Self::Out, buf: &mut Vec<u8>) -> io::Result<()> {
         let mut protocol = BinaryProtocol::from(buf);
-        msg.serialize(&mut protocol).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+        msg.serialize(&mut protocol)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
 
     }
 }

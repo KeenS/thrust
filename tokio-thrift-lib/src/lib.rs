@@ -1,9 +1,9 @@
 extern crate byteorder;
-#[macro_use]
 extern crate tokio_core;
 extern crate tokio_proto;
 extern crate tokio_service;
 extern crate futures;
+#[allow(unused_imports)]
 #[macro_use]
 extern crate log;
 

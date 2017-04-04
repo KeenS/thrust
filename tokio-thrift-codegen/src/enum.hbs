@@ -1,24 +1,26 @@
+#[allow(dead_code, non_snake_case, non_camel_case_types)]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum {{enum.ident}} {
     {{~#each enum.variants as |variant|}}
+    #[allow(dead_code, non_snake_case)]
     {{variant.ident}} = {{variant.seq}},
     {{~/each}}
 }
 
 
 
-impl Serialize for {{enum.ident}} {
-    fn serialize<S>(&self, s: &mut S) -> Result<(), Error>
-        where S: Serializer + ThriftSerializer
+impl ::tokio_thrift::protocol::Serialize for {{enum.ident}} {
+    fn serialize<S>(&self, s: &mut S) -> Result<(), ::tokio_thrift::protocol::Error>
+        where S: ::tokio_thrift::protocol::Serializer + ::tokio_thrift::protocol::ThriftSerializer
     {
         try!(<&self as i32>::serialize(s));
         Ok(())
     }
 }
 
-impl Deserialize for {{enum.ident}} {
-    fn deserialize<D>(de: &mut D) -> Result<Self, Error>
-        where D: Deserializer + ThriftDeserializer,
+impl ::tokio_thrift::protocol::Deserialize for {{enum.ident}} {
+    fn deserialize<D>(de: &mut D) -> Result<Self, ::tokio_thrift::protocol::Error>
+        where D: ::tokio_thrift::protocol::Deserializer + ::tokio_thrift::protocol::ThriftDeserializer,
     {
         let args = try!(de.deserialize_i32());
         Ok(args)

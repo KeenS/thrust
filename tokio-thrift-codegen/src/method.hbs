@@ -1,2 +1,2 @@
 // FIXME: generate result type
-fn {{method.ident}}(&self{{#each method.args as |arg| ~}} , {{arg.ident}}: {{to_rust arg.ty}}{{/each ~}}) -> BoxFuture<{{to_rust method.ty}}, ()>
+fn {{method.ident}}(&self{{#each method.args as |arg| ~}} , {{arg.ident}}: {{to_rust arg.ty}}{{/each ~}}) -> ::futures::future::BoxFuture<{{to_rust method.ty}}, ()>

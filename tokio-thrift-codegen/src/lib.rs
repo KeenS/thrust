@@ -133,7 +133,7 @@ macro_rules! static_register_files {
 pub fn compile(mut doc: Document, wr: &mut Write) -> Result<(), Error> {
     let mut handlebars = Handlebars::new();
     static_register_files!(handlebars,
-                           "base", "service",
+                           "service",
                            "service_client",
                            "service_server",
                            "struct", "enum",
@@ -150,10 +150,6 @@ pub fn compile(mut doc: Document, wr: &mut Write) -> Result<(), Error> {
     let mut data: BTreeMap<String, Json> = BTreeMap::new();
     let namespace = find_rust_namespace(&doc).map(|n| &n.module[..]).unwrap_or("self");
     data.insert("namespace".to_string(), Json::String(namespace.to_string()));
-
-    write!(wr,
-           "{}",
-           handlebars.render("base", &data).expect("faled to render base file"))?;
 
     for def in doc.definitions.iter() {
         use parser::Definition::*;

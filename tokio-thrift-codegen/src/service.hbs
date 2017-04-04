@@ -1,28 +1,31 @@
-
+#[allow(dead_code, non_snake_case, non_camel_case_types)]
 pub trait {{service.ident}}Service: Send {{#if service.extends ~}}+ {{service.extends}} {{/if}}{
     {{~#each service.methods as |method|}}
+    #[allow(dead_code, unused_imports, non_snake_case, non_camel_case_types)]
     {{> method method = method}};
     {{~/each}}
 }
 
 
+#[allow(dead_code, non_snake_case, non_camel_case_types)]
 #[derive(Debug, Clone)]
 pub enum {{service.ident}}ServiceMethodArgs {
     {{~#each service.methods as |method|}}
+    #[allow(dead_code, non_snake_case)]
     A{{method.ident}}({{../service.ident}}{{method.ident}}Args),
     {{~/each}}
 }
 
 
-impl Serialize for {{service.ident}}ServiceMethodArgs {
-    fn serialize<S>(&self, s: &mut S) -> Result<(), Error>
-        where S: Serializer + ThriftSerializer
+impl ::tokio_thrift::protocol::Serialize for {{service.ident}}ServiceMethodArgs {
+    fn serialize<S>(&self, s: &mut S) -> Result<(), ::tokio_thrift::protocol::Error>
+        where S: ::tokio_thrift::protocol::Serializer + ::tokio_thrift::protocol::ThriftSerializer
     {
         use self::{{service.ident}}ServiceMethodArgs::*;
         match self {
             {{~#each service.methods as |method|}}
             &A{{method.ident}}(ref b) => {
-                s.write_message_begin("{{method.ident}}", ThriftMessageType::Call)?;
+                s.write_message_begin("{{method.ident}}", ::tokio_thrift::protocol::ThriftMessageType::Call)?;
                 b.serialize(s)?;
                 s.write_message_end()?;
             },
@@ -32,9 +35,9 @@ impl Serialize for {{service.ident}}ServiceMethodArgs {
     }
 }
 
-impl Deserialize for {{service.ident}}ServiceMethodArgs {
-    fn deserialize<D>(de: &mut D) -> Result<Self, Error>
-        where D: Deserializer + ThriftDeserializer,
+impl ::tokio_thrift::protocol::Deserialize for {{service.ident}}ServiceMethodArgs {
+    fn deserialize<D>(de: &mut D) -> Result<Self, ::tokio_thrift::protocol::Error>
+        where D: ::tokio_thrift::protocol::Deserializer + ::tokio_thrift::protocol::ThriftDeserializer,
     {
         let msg = de.read_message_begin()?;
         //assert!(msg.type) == $msg_type
@@ -42,7 +45,7 @@ impl Deserialize for {{service.ident}}ServiceMethodArgs {
             {{~#each service.methods as |method|}}
             "{{method.ident}}" => {{../service.ident}}ServiceMethodArgs::A{{method.ident}}({{../service.ident}}{{method.ident}}Args::deserialize(de)?),
             {{~/each}}
-            _ => return Err(Error::from(io::Error::new(io::ErrorKind::InvalidData, "failed to parse thrift data"))),
+            _ => return Err(::tokio_thrift::protocol::Error::from(::std::io::Error::new(::std::io::ErrorKind::InvalidData, "failed to parse thrift data"))),
         };
         let _ = de.read_message_end()?;
         Ok(ret)
@@ -50,19 +53,21 @@ impl Deserialize for {{service.ident}}ServiceMethodArgs {
 }
 
 
+#[allow(dead_code, non_snake_case, non_camel_case_types)]
 #[derive(Debug, Clone)]
 pub enum {{service.ident}}ServiceMethodReturn {
     {{~#each service.methods as |method|}}
     // FIXME: generate exception too
+    #[allow(dead_code, non_snake_case)]
     R{{method.ident}}(Result<{{to_rust method.ty}}, ()>),
     {{~/each}}
 
 }
 
 
-impl Serialize for {{service.ident}}ServiceMethodReturn {
-    fn serialize<S>(&self, s: &mut S) -> Result<(), Error>
-        where S: Serializer + ThriftSerializer
+impl ::tokio_thrift::protocol::Serialize for {{service.ident}}ServiceMethodReturn {
+    fn serialize<S>(&self, s: &mut S) -> Result<(), ::tokio_thrift::protocol::Error>
+        where S: ::tokio_thrift::protocol::Serializer + ::tokio_thrift::protocol::ThriftSerializer
     {
         use self::{{service.ident}}ServiceMethodReturn::*;
         match self {
@@ -70,7 +75,7 @@ impl Serialize for {{service.ident}}ServiceMethodReturn {
             &R{{method.ident}}(ref b) => {
                 match b {
                     &Ok(ref b) => {
-                        s.write_message_begin("{{method.ident}}", ThriftMessageType::Reply)?;
+                        s.write_message_begin("{{method.ident}}", ::tokio_thrift::protocol::ThriftMessageType::Reply)?;
                         b.serialize(s)?;
                         s.write_message_end()?;
                     },
@@ -83,9 +88,9 @@ impl Serialize for {{service.ident}}ServiceMethodReturn {
     }
 }
 
-impl Deserialize for {{service.ident}}ServiceMethodReturn {
-    fn deserialize<D>(de: &mut D) -> Result<Self, Error>
-        where D: Deserializer + ThriftDeserializer,
+impl ::tokio_thrift::protocol::Deserialize for {{service.ident}}ServiceMethodReturn {
+    fn deserialize<D>(de: &mut D) -> Result<Self, ::tokio_thrift::protocol::Error>
+        where D: ::tokio_thrift::protocol::Deserializer + ::tokio_thrift::protocol::ThriftDeserializer,
     {
         let msg = de.read_message_begin()?;
         // if msg.type == return
@@ -93,7 +98,7 @@ impl Deserialize for {{service.ident}}ServiceMethodReturn {
             {{~#each service.methods as |method|}}
             "{{method.ident}}" => {{../service.ident}}ServiceMethodReturn::R{{method.ident}}(Ok({{to_rust method.ty}}::deserialize(de)?)),
             {{~/each}}
-            _ => return Err(Error::from(io::Error::new(io::ErrorKind::InvalidData, "failed to parse thrift data"))),
+            _ => return Err(::tokio_thrift::protocol::Error::from(::std::io::Error::new(::std::io::ErrorKind::InvalidData, "failed to parse thrift data"))),
         };
         // else msg.type == exception
         // FIXME:
@@ -105,12 +110,15 @@ impl Deserialize for {{service.ident}}ServiceMethodReturn {
 
 
 {{#each service.methods as |method| ~}}
+#[allow(dead_code, non_snake_case, non_camel_case_types)]
 #[derive(Debug, Clone)]
 pub struct {{../service.ident}}{{method.ident}}Args {
     {{~#each method.args as |arg|}}
     {{#if field.optional ~}}
+    #[allow(dead_code, non_snake_case)]
     pub {{arg.ident}}: Option<{{to_rust arg.ty}}>,
     {{~^~}}
+    #[allow(dead_code, non_snake_case)]
     pub {{arg.ident}}: {{to_rust arg.ty}},
     {{~/if~}}
     {{~/each}}
@@ -118,9 +126,9 @@ pub struct {{../service.ident}}{{method.ident}}Args {
 {{/each ~}}
 
 {{#each service.methods as |method| ~}}
-impl Serialize for {{../service.ident}}{{method.ident}}Args {
-    fn serialize<S>(&self, s: &mut S) -> Result<(), Error>
-        where S: Serializer + ThriftSerializer
+impl ::tokio_thrift::protocol::Serialize for {{../service.ident}}{{method.ident}}Args {
+    fn serialize<S>(&self, s: &mut S) -> Result<(), ::tokio_thrift::protocol::Error>
+        where S: ::tokio_thrift::protocol::Serializer + ::tokio_thrift::protocol::ThriftSerializer
     {
         s.write_struct_begin("{{../service.ident}}_{{method.ident}}_Args")?;
         {{#each method.args as |arg|~}}
@@ -144,9 +152,9 @@ impl Serialize for {{../service.ident}}{{method.ident}}Args {
 {{/each}}
 
 {{#each service.methods as |method|}}
-impl Deserialize for {{../service.ident}}{{method.ident}}Args {
-    fn deserialize<D>(de: &mut D) -> Result<Self, Error>
-        where D: Deserializer + ThriftDeserializer,
+impl ::tokio_thrift::protocol::Deserialize for {{../service.ident}}{{method.ident}}Args {
+    fn deserialize<D>(de: &mut D) -> Result<Self, ::tokio_thrift::protocol::Error>
+        where D: ::tokio_thrift::protocol::Deserializer + ::tokio_thrift::protocol::ThriftDeserializer,
     {
         de.read_struct_begin()?;
         {{#each args as |arg|~}}
@@ -154,7 +162,7 @@ impl Deserialize for {{../service.ident}}{{method.ident}}Args {
         {{~/each}}
         loop {
             let scheme_field = de.read_field_begin()?;
-            if scheme_field.ty == ThriftType::Stop {
+            if scheme_field.ty == ::tokio_thrift::protocol::ThriftType::Stop {
                 break;
             };
             match scheme_field.seq {

@@ -1,3 +1,4 @@
+#[allow(dead_code, non_snake_case, non_camel_case_types)]
 #[derive(Clone)]
 pub struct {{service.ident}}Server<T>
 {
@@ -14,16 +15,17 @@ impl <T: {{service.ident}}Service>{{service.ident}}Server<T>
     }
 }
 
-impl <T>Service for {{service.ident}}Server<T>
+impl <T> ::tokio_service::Service for {{service.ident}}Server<T>
     where T: {{service.ident}}Service
 {
     type Request = {{service.ident}}ServiceMethodArgs;
     type Response = {{service.ident}}ServiceMethodReturn;
-    type Error = io::Error;
-    type Future = BoxFuture<{{service.ident}}ServiceMethodReturn, io::Error>;
+    type Error = ::std::io::Error;
+    type Future = ::futures::future::BoxFuture<{{service.ident}}ServiceMethodReturn, ::std::io::Error>;
 
 
     fn call(&self, req: Self::Request) -> Self::Future {
+        use futures::Future;
         use {{../namespace}}::{{service.ident}}ServiceMethodArgs::*;
         use {{../namespace}}::{{service.ident}}ServiceMethodReturn::*;
         match req {
@@ -32,7 +34,7 @@ impl <T>Service for {{service.ident}}Server<T>
                 {{~#each method.args as |arg|}}
                 _args.{{arg.ident}},
                 {{~/each}}
-            ).then(|r| finished(R{{method.ident}}(r))).boxed(),
+            ).then(|r| ::futures::finished(R{{method.ident}}(r))).boxed(),
             {{~/each}}
         }
     }

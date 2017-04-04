@@ -1,20 +1,25 @@
-type {{service.ident}}ClientProto = ThriftProto<{{service.ident}}ServiceMethodArgs, {{service.ident}}ServiceMethodReturn>;
+#[allow(dead_code, non_camel_case_types)]
+type {{service.ident}}ClientProto = ::tokio_thrift::tokio::ThriftProto<{{service.ident}}ServiceMethodArgs, {{service.ident}}ServiceMethodReturn>;
 
-pub struct {{service.ident}}Client<T: 'static+Io> {
-    client: ClientService<T, {{service.ident}}ClientProto>,
+#[allow(dead_code, non_snake_case, non_camel_case_types)]
+pub struct {{service.ident}}Client<T: 'static+::tokio_core::io::Io> {
+    #[allow(dead_code, non_snake_case)]
+    client: ::tokio_proto::pipeline::ClientService<T, {{service.ident}}ClientProto>,
 }
 
-impl <T: 'static+Io>{{service.ident}}Client<T> {
-    pub fn new(client: ClientService<T, {{service.ident}}ClientProto>) -> Self {
+impl <T: 'static+::tokio_core::io::Io>{{service.ident}}Client<T> {
+    pub fn new(client: ::tokio_proto::pipeline::ClientService<T, {{service.ident}}ClientProto>) -> Self {
         {{service.ident}}Client {
             client: client,
         }
     }
 }
 
-impl <T: 'static+Io>{{service.ident}}Service for {{service.ident}}Client<T> {
+impl <T: 'static+::tokio_core::io::Io>{{service.ident}}Service for {{service.ident}}Client<T> {
     {{~#each service.methods as |method|}}
     {{> method method = method}} {
+        use futures::Future;
+        use tokio_service::Service;
         use {{../namespace}}::{{../service.ident}}ServiceMethodArgs::*;
         use {{../namespace}}::{{../service.ident}}ServiceMethodReturn::*;
         let args = {{../service.ident}}{{method.ident}}Args {
