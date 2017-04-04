@@ -2,7 +2,13 @@
 authors = ["Daniel Fagnan <dnfagnan@gmail.com>", "Sunrin SHIMURA (keen) <3han5chou7@gmail.com>"]
 name = "tokio-thrift-codegen"
 version = "0.1.0"
-workspace = "../"
+license = "MIT"
+description = "code generation library of tokio-thrift"
+readme = "README.md"
+documentation = "http://docs.rs/tokio-thrift-codegen"
+repository = "https://github.com/KeenS/tokio-thrift"
+keywords = ["thrift", "tokio", "rpc"]
+categories = ["Network programming", "Asynchronous"]
 
 [dependencies]
 handlebars = "^0.22"

@@ -2,7 +2,13 @@
 name = "tokio-thrift"
 version = "0.1.0"
 authors = ["Daniel Fagnan <dnfagnan@gmail.com>", "Sunrin SHIMURA (keen) <3han5chou7@gmail.com>"]
-workspace = "../"
+license = "MIT"
+description = "thrift runtime library based on tokio"
+readme = "README.md"
+documentation = "http://docs.rs/tokio-thrift"
+repository = "https://github.com/KeenS/tokio-thrift"
+keywords = ["thrift", "tokio", "rpc"]
+categories = ["Network programming", "Asynchronous"]
 
 
 [dependencies]

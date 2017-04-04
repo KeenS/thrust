@@ -1,0 +1,22 @@
+[package]
+name = "tokio-thrift-bin"
+version = "0.1.0"
+description = "Thrift implementation on Tokio"
+repository = "https://github.com/KeenS/tokio-thrift"
+readme = "README.md"
+keywords = ["thrift", "rpc", "tokio"]
+categories = ["Network programming", "Asynchronous"]
+license = "MIT"
+authors = ["Daniel Fagnan <dnfagnan@gmail.com>", "Sunrin SHIMURA (keen) <3han5chou7@gmail.com>"]
+
+
+[[bin]]
+name = "tokio-thrift"
+path = "src/main.rs"
+
+
+[dependencies]
+docopt = "0.6"
+rustc-serialize = "0.3"
+log = "0.3"
+tokio-thrift-codegen = "0.1"
