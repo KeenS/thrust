@@ -58,7 +58,8 @@ and at `service` , exception handling is not so matured that the server may hung
 ## Code Generation
 
 * [x] Command (`tokio-thrift` command)
-* [x] compiler plugin (`thrift!` , `thrift_file!` macro)
+* ~~[x] compiler plugin (`thrift!` , `thrift_file!` macro)~~ abandaned because not so useful
+* [x] build.rs (see [example build.rs](examples/simple_server_client/build.rs))
 
 ## Thrift Implementation
 
@@ -70,13 +71,14 @@ and at `service` , exception handling is not so matured that the server may hung
 Currently, framed transport supports only binary protocol.
 
 # Installing
-Notice again that this project is NOT READY TO USE.
+## using CLI
+Note again that this project is NOT READY TO USE.
 
 First, checkout this project and install the binary
 
 ```
 git clone https://github.com/KeenS/tokio-thrift
-cd tokio-thrift
+cd tokio-thrift/tokio-thrift-bin
 cargo install
 ```
 
@@ -86,16 +88,22 @@ then, run this command in your project to generate rust file
 tokio-thrift your_file.thrift src/
 ```
 
-and write this at your Cargo.toml
+## using build.rs
+
+see [example build.rs](examples/simple_server_client/build.rs)
+
+
+
+and in both cases, write below at your Cargo.toml
 
 ```toml
 [dependencies]
-tokio-thrift = {path = "path/to/tokio-thrift"}
+tokio-thrift = {path = "path/to/tokio-thrift/tokio-thrift-lib"}
 ```
 
 # More
 
-see [example](examples).
+see [examples](examples).
 
 # License
 MIT. See [LICENSE](LICENSE).
