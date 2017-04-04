@@ -1,23 +1,9 @@
 language: rust
 matrix:
   include:
+  - rust: stable
+  - rust: beta
   - rust: nightly
-    env: TEST_SUITE=suite_nightly
 script:
-- cargo build --verbose
-- cargo test --verbose
-- cd thrust-parser && cargo test --verbose && cd ..
-- cd thrust-macros && cargo test --verbose && cd ..
-- cd thrust-macros-test && cargo test --verbose && cd ..
-- if [ "$TEST_SUITE" = "suite_nightly" ]; then cargo bench --verbose; fi
-after_success: |
-  [ $TRAVIS_BRANCH = master ] &&
-  [ $TRAVIS_PULL_REQUEST = false ] &&
-  cargo doc &&
-  echo "<meta http-equiv=refresh content=0;url=`echo $TRAVIS_REPO_SLUG | cut -d '/' -f 2`/index.html>" > target/doc/index.html &&
-  sudo pip install ghp-import &&
-  ghp-import -n target/doc &&
-  git push -fq https://${GH_TOKEN}@github.com/${TRAVIS_REPO_SLUG}.git gh-pages
-env:
-  global:
-    secure: R/VUiFqpQX5wA1aeK8GasWjBQQd4XvpmktacItZ885tNvjOZvj6sGs9OOnpj0fiMgbO8csUBlVcprPRUyl0B+QxuetWZAcNf09sPqR2eQrtU94p3f2Ce41SHqHGaz1tLdnIUHjjm+F8FM514tDMPY3GXeScqSyl68obtMpJf/pU=
+  - cargo build --all --verbose
+  - cargo test --all --verbose
