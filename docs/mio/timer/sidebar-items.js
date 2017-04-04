@@ -1,1 +1,0 @@
-initSidebarItems({"enum":[["TimerErrorKind",""]],"struct":[["Builder",""],["Timeout",""],["Timer",""],["TimerError",""]],"type":[["OldTimerResult",""],["Result",""],["TimerResult",""]]});

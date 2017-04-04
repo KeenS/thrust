@@ -1,1 +1,0 @@
-initSidebarItems({"fn":[["new_thrift_client_transport",""],["new_thrift_server_transport",""]],"struct":[["FramedTransport",""],["TMethodArgsTransport",""],["TMethodRetTransport",""]],"trait":[["ParseThrift",""]],"type":[["FramedThriftClientTransport",""],["FramedThriftServerTransport",""]]});
