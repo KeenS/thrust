@@ -8,7 +8,7 @@ readme = "README.md"
 documentation = "http://docs.rs/tokio-thrift-codegen"
 repository = "https://github.com/KeenS/tokio-thrift"
 keywords = ["thrift", "tokio", "rpc"]
-categories = ["Network programming", "Asynchronous"]
+categories = ["network-programming", "asynchronous"]
 
 [dependencies]
 handlebars = "^0.22"
