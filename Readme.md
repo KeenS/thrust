@@ -95,7 +95,7 @@ tokio-thrift = {path = "path/to/tokio-thrift"}
 
 # More
 
-see [example](example).
+see [example](examples).
 
 # License
 MIT. See [LICENSE](LICENSE).
