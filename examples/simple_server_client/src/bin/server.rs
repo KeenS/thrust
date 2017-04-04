@@ -37,6 +37,6 @@ pub fn main() {
     let addr = "127.0.0.1:12345".parse().unwrap();
 
     // instanciate and start the server.
-    let server = new_tcp_server(addr);
+    let server = new_tcp_server::<_, HelloServiceMethodReturn>(addr);
     server.serve(|| Ok(HelloServer::new(HelloServerImpl)))
 }

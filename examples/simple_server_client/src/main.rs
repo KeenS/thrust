@@ -36,10 +36,10 @@ pub fn main() {
 
     // since server.serve blocks, spawn a new thread and won't wait for it terminate
     let _handle = spawn(move || {
-        // instanciate and start the server.
-        let server = new_tcp_server(addr);
-        server.serve(|| Ok(HelloServer::new(HelloServerImpl)))
-    });
+                            // instanciate and start the server.
+                            let server = new_tcp_server::<_, HelloServiceMethodReturn>(addr);
+                            server.serve(|| Ok(HelloServer::new(HelloServerImpl)))
+                        });
 
     let mut core = Core::new().unwrap();
     // Now our client. We use the same core as for the server - usually though this would be
@@ -50,7 +50,8 @@ pub fn main() {
     // just need a label, not looping
     'client: loop {
         for _ in 0..10 {
-            let client = client.connect(&addr, &core.handle())
+            let client = client
+                .connect(&addr, &core.handle())
                 .map(HelloClient::new);
             match core.run(client) {
                 Ok(c) => {
