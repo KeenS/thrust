@@ -237,7 +237,7 @@ pub trait Deserialize: Sized {
 
 /// ```
 /// use std::io::Cursor;
-/// use tokio_thrift::binary_protocol::BinaryProtocol;
+/// use tokio_thrift::protocol::BinaryProtocol;
 /// use tokio_thrift::protocol::Deserialize;
 ///
 /// let mut de = BinaryProtocol::new(Cursor::new(vec![100u8]));
@@ -262,7 +262,7 @@ impl Deserialize for bool {
 
 /// ```
 /// use std::io::Cursor;
-/// use tokio_thrift::binary_protocol::BinaryProtocol;
+/// use tokio_thrift::protocol::BinaryProtocol;
 /// use tokio_thrift::protocol::Deserialize;
 ///
 /// let mut de = BinaryProtocol::new(Cursor::new(vec![100u8]));

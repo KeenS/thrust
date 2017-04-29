@@ -275,7 +275,7 @@ mod tests {
     use byteorder::{ReadBytesExt, WriteBytesExt, BigEndian};
     use protocol::{ThriftMessageType, ThriftType, ThriftMessage, ThriftDeserializer, ThriftSerializer, Serializer, Serialize, Deserializer};
     use super::*;
-    use ::Deserialize;
+    use ::protocol::Deserialize;
 
 
     #[test]
