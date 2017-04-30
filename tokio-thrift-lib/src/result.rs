@@ -1,7 +1,6 @@
 use std::io;
 use std::convert;
 use std::sync::PoisonError;
-use byteorder;
 use std::sync::mpsc::{SendError, RecvError};
 use protocol;
 
@@ -11,7 +10,6 @@ pub enum ThriftError {
     NotReady,
     Str(String),
     IO(io::Error),
-    ByteOrder(byteorder::Error),
     PoisonError,
     RecvError(RecvError),
     SendError,
@@ -40,12 +38,6 @@ impl convert::From<protocol::Error> for ThriftError {
 impl convert::From<RecvError> for ThriftError {
     fn from(_val: RecvError) -> ThriftError {
         ThriftError::RecvError(RecvError)
-    }
-}
-
-impl convert::From<byteorder::Error> for ThriftError {
-    fn from(val: byteorder::Error) -> ThriftError {
-        ThriftError::ByteOrder(val)
     }
 }
 
