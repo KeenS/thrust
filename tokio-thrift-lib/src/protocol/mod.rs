@@ -2,13 +2,11 @@ pub mod binary_protocol;
 pub use self::binary_protocol::BinaryProtocol;
 
 use std::{io, convert, error, fmt};
-use byteorder;
 use std::string::FromUtf8Error;
 
 #[derive(Debug)]
 pub enum Error {
     EOF,
-    Byteorder(byteorder::Error),
     Io(io::Error),
     Utf8Error(FromUtf8Error),
     BadVersion,
@@ -25,7 +23,6 @@ impl error::Error for Error {
     fn description(&self) -> &str {
         match self {
             &Error::EOF => "eof",
-            &Error::Byteorder(_) => "internal error of byteorder",
             &Error::Io(_) => "internal error of io",
             &Error::Utf8Error(_) => "internal error of utf8 conversion",
             &Error::BadVersion => "bad version",
@@ -36,7 +33,6 @@ impl error::Error for Error {
     fn cause(&self) -> Option<&error::Error> {
         match self {
             &Error::EOF => None,
-            &Error::Byteorder(ref e) => Some(e),
             &Error::Io(ref e) => Some(e),
             &Error::Utf8Error(ref e) => Some(e),
             &Error::BadVersion => None,
@@ -45,15 +41,6 @@ impl error::Error for Error {
     }
 }
 
-
-impl convert::From<byteorder::Error> for Error {
-    fn from(err: byteorder::Error) -> Error {
-        match err {
-            byteorder::Error::UnexpectedEOF => Error::EOF,
-            err => Error::Byteorder(err),
-        }
-    }
-}
 
 impl convert::From<FromUtf8Error> for Error {
     fn from(err: FromUtf8Error) -> Error {
