@@ -271,11 +271,10 @@ impl<T: ReadTransport> ThriftDeserializer for BinaryProtocol<T> {
 
 #[cfg(test)]
 mod tests {
-    use std::io::{Cursor, Read, Write};
+    use std::io::{Cursor, Write};
     use byteorder::{ReadBytesExt, WriteBytesExt, BigEndian};
-    use protocol::{ThriftMessageType, ThriftType, ThriftMessage, ThriftDeserializer, ThriftSerializer, Serializer, Serialize, Deserializer};
+    use protocol::{ThriftMessageType, ThriftDeserializer, ThriftSerializer, Serializer, Deserialize};
     use super::*;
-    use ::Deserialize;
 
 
     #[test]
@@ -288,7 +287,7 @@ mod tests {
     #[test]
     fn deserialize_u16() {
         let mut buf = Vec::new();
-        buf.write_u16::<BigEndian>(32000);
+        assert!(buf.write_u16::<BigEndian>(32000).is_ok());
         let mut de = BinaryProtocol::new(Cursor::new(buf));
         let val: u16 = Deserialize::deserialize(&mut de).unwrap();
         assert_eq!(val, 32000);
@@ -297,7 +296,7 @@ mod tests {
     #[test]
     fn deserialize_i16() {
         let mut buf = Vec::new();
-        buf.write_i16::<BigEndian>(-32000);
+        assert!(buf.write_i16::<BigEndian>(-32000).is_ok());
         let mut de = BinaryProtocol::new(Cursor::new(buf));
         let val: i16 = Deserialize::deserialize(&mut de).unwrap();
         assert_eq!(val, -32000);
@@ -306,7 +305,7 @@ mod tests {
     #[test]
     fn deserialize_u32() {
         let mut buf = Vec::new();
-        buf.write_u32::<BigEndian>(32000);
+        assert!(buf.write_u32::<BigEndian>(32000).is_ok());
         let mut de = BinaryProtocol::new(Cursor::new(buf));
         let val: u32 = Deserialize::deserialize(&mut de).unwrap();
         assert_eq!(val, 32000);
@@ -315,7 +314,7 @@ mod tests {
     #[test]
     fn deserialize_i32() {
         let mut buf = Vec::new();
-        buf.write_i32::<BigEndian>(32000);
+        assert!(buf.write_i32::<BigEndian>(32000).is_ok());
         let mut de = BinaryProtocol::new(Cursor::new(buf));
         let val: i32 = Deserialize::deserialize(&mut de).unwrap();
         assert_eq!(val, 32000);
@@ -324,7 +323,7 @@ mod tests {
     #[test]
     fn deserialize_u64() {
         let mut buf = Vec::new();
-        buf.write_u64::<BigEndian>(32000);
+        assert!(buf.write_u64::<BigEndian>(32000).is_ok());
         let mut de = BinaryProtocol::new(Cursor::new(buf));
         let val: u64 = Deserialize::deserialize(&mut de).unwrap();
         assert_eq!(val, 32000);
@@ -333,7 +332,7 @@ mod tests {
     #[test]
     fn deserialize_i64() {
         let mut buf = Vec::new();
-        buf.write_i64::<BigEndian>(32000);
+        assert!(buf.write_i64::<BigEndian>(32000).is_ok());
         let mut de = BinaryProtocol::new(Cursor::new(buf));
         let val: i64 = Deserialize::deserialize(&mut de).unwrap();
         assert_eq!(val, 32000);
@@ -342,7 +341,7 @@ mod tests {
     #[test]
     fn deserialize_f64() {
         let mut buf = Vec::new();
-        buf.write_f64::<BigEndian>(32000.0);
+        assert!(buf.write_f64::<BigEndian>(32000.0).is_ok());
         let mut de = BinaryProtocol::new(Cursor::new(buf));
         let val: f64 = Deserialize::deserialize(&mut de).unwrap();
         assert_eq!(val, 32000.0);
@@ -352,8 +351,8 @@ mod tests {
     fn deserialize_string() {
         let mut buf = Vec::new();
         let i = "foobar";
-        buf.write_i32::<BigEndian>(i.len() as i32);
-        buf.write(i.as_bytes());
+        assert!(buf.write_i32::<BigEndian>(i.len() as i32).is_ok());
+        assert!(buf.write(i.as_bytes()).is_ok());
         let mut de = BinaryProtocol::new(Cursor::new(buf));
         let val: String = Deserialize::deserialize(&mut de).unwrap();
         assert_eq!(&*val, "foobar");
@@ -364,7 +363,7 @@ mod tests {
         let mut v: Vec<u8> = Vec::new();
         {
             let mut s = BinaryProtocol::new(&mut v);
-            s.serialize_bool(true);
+            assert!(s.serialize_bool(true).is_ok());
         }
 
         assert_eq!(v[0], 1);
@@ -375,7 +374,7 @@ mod tests {
         let mut v = Vec::new();
         {
             let mut s = BinaryProtocol::new(&mut v);
-            s.serialize_bool(false);
+            assert!(s.serialize_bool(false).is_ok());
         }
 
         assert_eq!(v[0], 0);
@@ -386,7 +385,7 @@ mod tests {
         let mut v = Vec::new();
         {
             let mut s = BinaryProtocol::new(&mut v);
-            s.serialize_i8(5);
+            assert!(s.serialize_i8(5).is_ok());
         }
 
         assert_eq!(v[0], 5);
@@ -397,7 +396,7 @@ mod tests {
         let mut v = Vec::new();
         {
             let mut s = BinaryProtocol::new(&mut v);
-            s.serialize_i8(-5);
+            assert!(s.serialize_i8(-5).is_ok());
         }
 
         assert_eq!(v[0] as i8, -5);
@@ -408,7 +407,7 @@ mod tests {
         let mut v = Vec::new();
         {
             let mut s = BinaryProtocol::new(&mut v);
-            s.serialize_i16(900);
+            assert!(s.serialize_i16(900).is_ok());
         }
 
         let mut cursor = Cursor::new(v);
@@ -420,7 +419,7 @@ mod tests {
         let mut v = Vec::new();
         {
             let mut s = BinaryProtocol::new(&mut v);
-            s.serialize_i16(-900);
+            assert!(s.serialize_i16(-900).is_ok());
         }
 
         let mut cursor = Cursor::new(v);
@@ -432,7 +431,7 @@ mod tests {
         let mut v = Vec::new();
         {
             let mut s = BinaryProtocol::new(&mut v);
-            s.serialize_i32(3000000);
+            assert!(s.serialize_i32(3000000).is_ok());
         }
 
         let mut cursor = Cursor::new(v);
@@ -444,7 +443,7 @@ mod tests {
         let mut v = Vec::new();
         {
             let mut s = BinaryProtocol::new(&mut v);
-            s.serialize_i32(-3000000);
+            assert!(s.serialize_i32(-3000000).is_ok());
         }
 
         let mut cursor = Cursor::new(v);
@@ -456,7 +455,7 @@ mod tests {
         let mut v = Vec::new();
         {
             let mut s = BinaryProtocol::new(&mut v);
-            s.serialize_i64(33000000);
+            assert!(s.serialize_i64(33000000).is_ok());
         }
 
         let mut cursor = Cursor::new(v);
@@ -468,7 +467,7 @@ mod tests {
         let mut v = Vec::new();
         {
             let mut s = BinaryProtocol::new(&mut v);
-            s.serialize_i64(-33000000);
+            assert!(s.serialize_i64(-33000000).is_ok());
         }
 
         let mut cursor = Cursor::new(v);
@@ -480,7 +479,7 @@ mod tests {
         let mut v = Vec::new();
         {
             let mut proto = BinaryProtocol::new(&mut v);
-            proto.write_message_begin("foobar", ThriftMessageType::Call);
+            assert!(proto.write_message_begin("foobar", ThriftMessageType::Call).is_ok());
         }
 
         let mut cursor = Cursor::new(v);
@@ -496,7 +495,7 @@ mod tests {
 
         {
             let mut se = BinaryProtocol::new(&mut buf);
-            se.write_message_begin("Foobar123", ThriftMessageType::Call);
+            assert!(se.write_message_begin("Foobar123", ThriftMessageType::Call).is_ok());
         }
 
         let mut de = BinaryProtocol::new(Cursor::new(buf));

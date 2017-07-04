@@ -12,7 +12,7 @@ use std::collections::{HashMap, HashSet};
 use tokio_thrift::protocol::{ThriftDeserializer, ThriftSerializer};
 use tokio_thrift::protocol::{Serializer, Deserializer};
 use tokio_thrift::protocol::{Deserialize, Serialize, ThriftMessage};
-use tokio_thrift::binary_protocol::{BinarySerializer, BinaryDeserializer};
+use tokio_thrift::protocol::{BinarySerializer, BinaryDeserializer};
 
 
 pub trait FlockDbService {
